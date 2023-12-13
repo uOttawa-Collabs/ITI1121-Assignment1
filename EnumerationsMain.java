@@ -9,19 +9,19 @@ public class EnumerationsMain
      */
     public static void main(String[] args)
     {
+        int     numRows      = GameMain.validateInt(args, 0, 3);
+        int     numColumns   = GameMain.validateInt(args, 1, 3);
+        int     wins         = GameMain.validateInt(args, 2, 3);
+        boolean showAllGames = GameMain.validateBoolean(args, 3, "false");
 
-        int numRows    = validateInt(args, 0);
-        int numColumns = validateInt(args, 1);
-        int wins       = validateInt(args, 2);
-
-        if (args.length > 3)
+        if (args.length > 4)
         {
-            System.out.println("Too many arguments. Only the first 3 are used.");
+            System.out.println("Too many arguments. Only the first 4 are used.");
         }
 
         TicTacToeEnumerations generator = new TicTacToeEnumerations(numRows, numColumns, wins);
         generator.generateAllGames();
-        System.out.println(generator);
+        System.out.println(generator.toString(showAllGames));
     }
 
     /**
@@ -47,5 +47,4 @@ public class EnumerationsMain
         }
         return 3;
     }
-
 }

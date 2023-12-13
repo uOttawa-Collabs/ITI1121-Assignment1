@@ -12,7 +12,6 @@ public class TicTacToeEnumerations
      */
     LinkedList<LinkedList<TicTacToe>> allGames;
 
-
     /**
      * A constructor where you can specify the dimensions
      * of your game as rows x coluns grid, and a sizeToWin
@@ -29,7 +28,6 @@ public class TicTacToeEnumerations
 
     public LinkedList<LinkedList<TicTacToe>> generateAllGames()
     {
-
         allGames = new LinkedList<LinkedList<TicTacToe>>();
         addToGames(template);
 
@@ -54,6 +52,11 @@ public class TicTacToeEnumerations
 
     public String toString()
     {
+        return toString(false);
+    }
+
+    public String toString(boolean showAllGames)
+    {
         if (allGames == null)
         {
             return "No games generated.";
@@ -69,6 +72,7 @@ public class TicTacToeEnumerations
         {
             LinkedList<TicTacToe> games           = allGames.get(i);
             int                   numStillPlaying = 0;
+            StringBuilder         sGames          = new StringBuilder();
             for (TicTacToe g : games)
             {
                 numGames += 1;
@@ -87,10 +91,18 @@ public class TicTacToeEnumerations
                         numDraw += 1;
                         break;
                 }
+
+                if (showAllGames)
+                {
+                    sGames.append(g);
+                    sGames.append("\n\n");
+                }
+
             }
             s.append("======= level " + i + " =======: ");
             s.append(games.size() + " element(s) (");
             s.append(numStillPlaying + " still playing)\n");
+            s.append(sGames.toString());
         }
 
         s.append("that's " + numGames + " games\n");
@@ -121,5 +133,4 @@ public class TicTacToeEnumerations
         }
         return isNewGame;
     }
-
 }

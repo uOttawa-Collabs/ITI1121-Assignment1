@@ -1,5 +1,3 @@
-import javax.swing.*;
-
 /**
  * The class <b>TicTacToe</b> is the
  * class that implements the Tic Tac Toe Game.
@@ -11,8 +9,8 @@ import javax.swing.*;
  */
 public class TicTacToe
 {
-    private static final int DEFAULT_ROWS      = 3;
-    private static final int DEFAULT_COLUMNS   = 3;
+    private static final int DEFAULT_ROWS    = 3;
+    private static final int DEFAULT_COLUMNS = 3;
     private static final int DEFAULT_SIZETOWIN = 3;
     /**
      * The internal representation of the board
@@ -31,7 +29,6 @@ public class TicTacToe
      * 9  | 10  | 11 | 12
      */
     CellValue[] board;
-
     /**
      * The transformed board
      * Initialized as the identity (board), i.e. no changes
@@ -39,26 +36,24 @@ public class TicTacToe
      * in the underlying board
      */
     int[] boardIndexes;
-
     /**
      * What are all the allowable transformations of this board
      * There are more transformations for square boards
      */
     int                allowableIndex;
     Transformer.Type[] allowable;
-
     /**
      * The number of rows in your grid.
      */
-    int       numRows;
+    int numRows;
     /**
      * The number of columns in your grid.
      */
-    int       numColumns;
+    int numColumns;
     /**
      * How many rounds have the players played so far.
      */
-    int       numRounds;
+    int numRounds;
     /**
      * eck
      * What is the current state of the game
@@ -69,20 +64,15 @@ public class TicTacToe
      * aligned (vertically, horizontally, or diagonally)
      * to determine a winner of the game
      */
-    int       sizeToWin;
+    int sizeToWin;
     /**
      * Who is the current player?
      */
     CellValue currentPlayer;
     /**
-     * What was the last played position
+     * In what order was the positions played
      */
-    int       lastPlayedPosition;
-
-    /**
-     * Tracking where the iteration process is
-     */
-    int       currentIterationIndex;
+    int lastPlayedPosition;
 
     /**
      * The default empty constructor.  The default game
@@ -118,30 +108,26 @@ public class TicTacToe
         }
 
         boardIndexes = new int[boardSize];
-        Transformer.identity(numRows, numColumns, boardIndexes);
-
-        allowable = Transformer.symmetricTransformations(numRows, numColumns);
-        allowableIndex = allowable.length;
-        currentIterationIndex = 0;
+        allowable    = Transformer.symmetricTransformations(numRows, numColumns);
+        reset();
     }
 
     /**
-     * The method String repeat is availabe in Java 11+
-     * Some students still have Java 8 (or less) so we
-     * will implement this method directly for backwards
-     * compatibility
+     * Copy one game into another.
+     * The new game is a deep copy of this game
+     * and then we apply the next move.  If the move
+     * is not valid, return null;
      *
-     * @param str      The string the repeat
-     * @param numTimes How often to repeat
+     * @return A new TicTacToe game
      */
-    private static String repeat(String str, int numTimes)
+    public static void cloneFromTo(TicTacToe fromGame, TicTacToe toGame)
     {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < numTimes; i++)
+        toGame.currentPlayer = fromGame.nextPlayer();
+        toGame.numRounds     = fromGame.numRounds + 1;
+        for (int i = 0; i < fromGame.board.length; i++)
         {
-            sb.append(str);
+            toGame.board[i] = fromGame.board[i];
         }
-        return sb.toString();
     }
 
     private static void printTest(TicTacToe g)
@@ -247,8 +233,7 @@ public class TicTacToe
      * <p>
      * If the row/column is invalid, return CellValue.INVALID.
      *
-     * @param row    The row position on the board to look up its current value
-     * @param column The column position on the board to look up its current value
+     * @param position The position on the board to look up its current value
      *
      * @return The CellValue at that row/column
      */
@@ -341,6 +326,7 @@ public class TicTacToe
      */
     private GameState checkForWinner(int position)
     {
+
         GameState ifWon;
         switch (currentPlayer)
         {
@@ -476,7 +462,7 @@ public class TicTacToe
         int           maxRowsIndex    = numRows - 1;
         int           maxColumnsIndex = numColumns - 1;
 
-        String lineSeparator = repeat("---", numColumns) + repeat("-", numColumns - 1);
+        String lineSeparator = Utils.repeat("---", numColumns) + Utils.repeat("-", numColumns - 1);
 
         for (int i = 0; i < numRows; i++)
         {
@@ -531,12 +517,12 @@ public class TicTacToe
 
         int[] answer = new int[numOpenSpots];
 
-        int i = 0;
-        for (int position = 1; position <= totalSpots; position++)
+        int index = 0;
+        for (int i = 0; i < totalSpots; i++)
         {
-            if (valueAt(position) == CellValue.EMPTY)
+            if (board[boardIndexes[i]] == CellValue.EMPTY)
             {
-                answer[i++] = position;
+                answer[index++] = i + 1;
             }
         }
 
@@ -555,7 +541,6 @@ public class TicTacToe
      */
     public TicTacToe cloneNextPlay(int nextMove)
     {
-
         // Game already finished
         if (gameState != GameState.PLAYING)
         {
@@ -568,15 +553,54 @@ public class TicTacToe
         }
 
         TicTacToe newGame = new TicTacToe(numRows, numColumns, sizeToWin);
-        newGame.currentPlayer      = nextPlayer();
-        newGame.numRounds          = numRounds + 1;
-        newGame.lastPlayedPosition = nextMove;
-        for (int i = 0; i < board.length; i++)
-        {
-            newGame.board[i] = board[i];
-        }
+        cloneFromTo(this, newGame);
         newGame.board[nextMove - 1] = newGame.currentPlayer;
                                       newGame.gameState = newGame.checkForWinner(nextMove);
+        return newGame;
+    }
+
+    /**
+     * Create a copy of the current game with one fewer moves.
+     * The new game is a deep copy of this game
+     * and then we undo the last move.  If the move
+     * is not valid, or nothing was played there then return null;
+     *
+     * @param lastMove The desired next move (1 to numRows x numColumns)
+     *
+     * @return A new TicTacToe game
+     */
+    public TicTacToe cloneUndoPlay(int lastMove)
+    {
+        CellValue last = valueAt(lastMove);
+        switch (last)
+        {
+            case INVALID:
+            case EMPTY:
+                return null;
+            default:
+                // Can only undo the "current player" pieces
+                // So if X played last, and the value is an O then you cannot remove it
+                if (last != currentPlayer)
+                {
+                    return null;
+                }
+        }
+
+        TicTacToe newGame = new TicTacToe(numRows, numColumns, sizeToWin);
+        newGame.currentPlayer = nextPlayer();
+        newGame.numRounds     = numRounds - 1;
+        for (int i = 0; i < board.length; i++)
+        {
+            if (i + 1 != lastMove)
+            {
+                newGame.board[i] = board[i];
+            }
+        }
+
+        // Cannot easily figure out the last position played, so "undo" that field
+        newGame.lastPlayedPosition = 0;
+        newGame.currentPlayer      = nextPlayer();
+        newGame.gameState          = GameState.PLAYING;
         return newGame;
     }
 
@@ -589,12 +613,14 @@ public class TicTacToe
      * win, and the pieces on the board.
      * <p>
      * A symmetric board is considered equal.
+     * <p>
+     * This will leave this game aligned with the compared game.
      *
      * @param obj An object we are comparing against
      *
      * @return True if they represent the same state
      */
-    public boolean equals(Object obj)
+    public boolean alignAndEquals(Object obj)
     {
         if (obj == null)
         {
@@ -624,29 +650,51 @@ public class TicTacToe
             return false;
         }
 
-        compareTo.reset();
-        while (compareTo.hasNext())
+        boolean isEqual = false;
+        reset();
+        while (next())
         {
-            compareTo.next();
-
-            int j;
-            for (j = 0; j < boardIndexes.length; ++j)
+            boolean foundDifference = false;
+            for (int i = 0; i < board.length; i++)
             {
-                if (board[j] != compareTo.board[compareTo.boardIndexes[j]])
+                if (board[boardIndexes[i]] != compareTo.board[i])
                 {
+                    foundDifference = true;
                     break;
                 }
             }
-            if (j == boardIndexes.length)
+
+            if (!foundDifference)
             {
-                // Break not happen, this transformation of compareTo IS a symmetric
-                return true;
+                isEqual = true;
+                break;
             }
-            // Break happened, this transformation of compareTo is NOT a symmetric
-            // Carry on to the next iteration
         }
 
-        return false;
+        return isEqual;
+    }
+
+    /**
+     * Compares this instance of the game with the
+     * instance passed as parameter. Return true
+     * if and only if the two instance represent
+     * the same state of the game including
+     * The board dimensions, number of cells to
+     * win, and the pieces on the board.
+     * <p>
+     * A symmetric board is considered equal.
+     * <p>
+     * This will reset this game after the comparison is done.
+     *
+     * @param obj An object we are comparing against
+     *
+     * @return True if they represent the same state
+     */
+    public boolean equals(Object obj)
+    {
+        boolean answer = alignAndEquals(obj);
+        reset();
+        return answer;
     }
 
     /**
@@ -689,8 +737,8 @@ public class TicTacToe
      */
     public void reset()
     {
+        allowableIndex = 0;
         Transformer.identity(numRows, numColumns, boardIndexes);
-        currentIterationIndex = 0;
     }
 
     /**
@@ -698,7 +746,7 @@ public class TicTacToe
      */
     public boolean hasNext()
     {
-        return currentIterationIndex < allowableIndex;
+        return allowableIndex < allowable.length;
     }
 
     /**
@@ -706,21 +754,12 @@ public class TicTacToe
      */
     public boolean next()
     {
-        if (hasNext())
+        if (!hasNext())
         {
-            if (!Transformer.transform(allowable[currentIterationIndex], numRows, numColumns, boardIndexes))
-            {
-                reset();
-                return false;
-            }
-            else
-            {
-                ++currentIterationIndex;
-                return true;
-            }
-        }
-        else
             return false;
+        }
+        boolean didTransform = Transformer.transform(allowable[allowableIndex], numRows, numColumns, boardIndexes);
+        allowableIndex += 1;
+        return didTransform;
     }
 }
-

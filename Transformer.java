@@ -11,35 +11,28 @@ public class Transformer
      */
     public static Type[] symmetricTransformations(int numRows, int numColumns)
     {
-        Type[] types;
-
-        if (numRows == 0 || numColumns == 0)
+        if (numRows == numColumns)
         {
-            return null;
-        }
-
-        if (numRows != numColumns)
-        {
-            types    = new Type[4];
-            types[0] = Type.IDENTITY;
-            types[1] = Type.HORIZONAL_SYMMETRY;
-            types[2] = Type.VERTICAL_SYMMETRY;
-            types[3] = Type.HORIZONAL_SYMMETRY;
+            return new Type[] {
+                    Type.IDENTITY,
+                    Type.ROTATION,
+                    Type.ROTATION,
+                    Type.ROTATION,
+                    Type.HORIZONAL_SYMMETRY,
+                    Type.ROTATION,
+                    Type.ROTATION,
+                    Type.ROTATION,
+                    };
         }
         else
         {
-            types    = new Type[8];
-            types[0] = Type.IDENTITY;
-            types[1] = Type.ROTATION;
-            types[2] = Type.ROTATION;
-            types[3] = Type.ROTATION;
-            types[4] = Type.HORIZONAL_SYMMETRY;
-            types[5] = Type.ROTATION;
-            types[6] = Type.ROTATION;
-            types[7] = Type.ROTATION;
+            return new Type[] {
+                    Type.IDENTITY,
+                    Type.HORIZONAL_SYMMETRY,
+                    Type.VERTICAL_SYMMETRY,
+                    Type.HORIZONAL_SYMMETRY
+            };
         }
-
-        return types;
     }
 
     /**
@@ -83,21 +76,14 @@ public class Transformer
      */
     public static boolean identity(int numRows, int numColumns, int[] board)
     {
-        if (numRows == 0 || numColumns == 0 || board == null || numRows * numColumns != board.length)
+        if (!canFlip(numRows, numColumns, board))
         {
             return false;
         }
 
-        try
+        for (int i = 0; i < board.length; i++)
         {
-            for (int i = 0; i < numRows * numColumns; ++i)
-            {
-                board[i] = i;
-            }
-        }
-        catch (ArrayIndexOutOfBoundsException e)
-        {
-            return false;
+            board[i] = i;
         }
         return true;
     }
@@ -126,29 +112,21 @@ public class Transformer
      */
     public static boolean horizontalFlip(int numRows, int numColumns, int[] board)
     {
-        if (numRows == 0 || numColumns == 0 || board == null || numRows * numColumns != board.length)
+        if (!canFlip(numRows, numColumns, board))
         {
             return false;
         }
 
-        try
+        int tmp;
+        for (int i = 0; i < (numRows / 2); i++)
         {
-            for (int i = 0; i < numRows / 2; i++)
+            for (int j = 0; j < numColumns; j++)
             {
-                for (int j = 0; j < numColumns; j++)
-                {
-                    int temp = board[i * numColumns + j];
-                    int k    = (numRows - 1 - i) * numColumns + j;
-                    board[i * numColumns + j] = board[k];
-                    board[k]                  = temp;
-                }
+                tmp                                       = board[(numRows - i - 1) * numColumns + j];
+                board[(numRows - i - 1) * numColumns + j] = board[i * numColumns + j];
+                board[i * numColumns + j]                 = tmp;
             }
         }
-        catch (Exception e)
-        {
-            return false;
-        }
-
         return true;
     }
 
@@ -176,28 +154,19 @@ public class Transformer
      */
     public static boolean verticalFlip(int numRows, int numColumns, int[] board)
     {
-        if (numRows == 0 || numColumns == 0 || board == null || numRows * numColumns != board.length)
+        if (!canFlip(numRows, numColumns, board))
         {
             return false;
         }
-
-        try
+        int tmp;
+        for (int i = 0; i < (numRows); i++)
         {
-            for (int i = 0; i < numColumns / 2; i++)
+            for (int j = 0; j < (numColumns / 2); j++)
             {
-                for (int j = 0; j < numRows; j++)
-                {
-                    int temp = board[numColumns * j + i];
-                    int k    = (numColumns - 1 - i) + j * numColumns;
-                    board[numColumns * j + i] = board[k];
-                    board[k]                  = temp;
-                }
+                tmp                                 = board[(i + 1) * numColumns - j - 1];
+                board[(i + 1) * numColumns - j - 1] = board[i * numColumns + j];
+                board[i * numColumns + j]           = tmp;
             }
-
-        }
-        catch (Exception e)
-        {
-            return false;
         }
         return true;
     }
@@ -228,39 +197,44 @@ public class Transformer
      */
     public static boolean rotate90(int numRows, int numColumns, int[] board)
     {
-        if (numRows == 0 || numRows != numColumns || board == null ||
-            numRows * numColumns != board.length)
+        if (!canFlip(numRows, numColumns, board))
         {
             return false;
         }
-        else if (numRows == 1)
+        else if (numRows != numColumns)
         {
-            return true;
+            return false;
         }
-        else
+
+        int[] tmp;
+        tmp = new int[board.length];
+
+        for (int i = 0; i < board.length; i++)
         {
-            try
+            tmp[i] = board[i];
+        }
+
+        for (int i = 0; i < numColumns; i++)
+        {
+            for (int j = 0; j < numRows; j++)
             {
-                for (int i = 0; i < numRows; ++i)
-                {
-                    for (int j = i + 1; j < numColumns; ++j)
-                    {
-                        // Transpose
-                        int coord1 = i * numColumns + j;
-                        int coord2 = j * numColumns + i;
-                        // Swap
-                        board[coord1] ^= board[coord2];
-                        board[coord2] ^= board[coord1];
-                        board[coord1] ^= board[coord2];
-                    }
-                }
-                return verticalFlip(numRows, numColumns, board);
-            }
-            catch (ArrayIndexOutOfBoundsException e)
-            {
-                return false;
+                board[j * numRows + i] = tmp[(numColumns - i - 1) * numRows + j];
             }
         }
+        return true;
+    }
+
+    private static boolean canFlip(int numRows, int numColumns, int[] board)
+    {
+        if (board == null)
+        {
+            return false;
+        }
+        else if (numRows < 1 || numColumns < 1)
+        {
+            return false;
+        }
+        else return board.length == numRows * numColumns;
     }
 
     private static void test(int numRows, int numColumns)
@@ -308,7 +282,7 @@ public class Transformer
     }
 
     /**
-     * An static enum for the types of
+     * An static enum  for the types of
      * allowable transformations
      */
     public enum Type

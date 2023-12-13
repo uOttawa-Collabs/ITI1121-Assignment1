@@ -1,4 +1,4 @@
-public class ComputerRandomPlayer implements Player
+public class ComputerRandomPlayer extends Player
 {
     public boolean play(TicTacToe game)
     {
@@ -14,5 +14,4 @@ public class ComputerRandomPlayer implements Player
         game.play(choice);
         return true;
     }
-
 }

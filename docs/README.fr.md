@@ -1,827 +1,484 @@
 <center>
   <h1>ITI 1521. Introduction à l’informatique II</h1>
-  <h3>Devoir 2</h3>
-  <h3>Échéance: 09 jui 2020, 23 h 00</h3>
+  <h3>Devoir 4</h3>
+  <h3>Échéance: 28 jui 2020, 23 h 00</h3>
 </center>
 
 ## Objectifs d’apprentissage
 
-* Itérer à travers différents états
-* Appliquer la technique de l’indirection
+* Employer l’héritage, la composition et les classes abstraites
+* Expérimenter avec l’apprentissage machine
 
 ## Introduction
 
-Pour le devoir précédent, nous avions autorisé le traitement des jeux symétriques. Dans cet devoir, nous supprimerons ces jeux symétriques pour rendre notre espace de recherche plus petit.
+Nous avons créé la base de notre implémentation de MENACE, un système automatisé qui apprend à jouer au Tic-Tac-Toe. Dans ce devoir, nous utiliserons notre solution du devoir 3, ainsi, vous devez donc d’abord la compléter. Ensuite nous l’utiliserons pour créer notre propre implémentation de la machine proposée dans l’article de Donald Michie de 1961.
 
-## Symétries et itérateurs
+## Menace
 
-Lorsque nous avons créé notre liste de jeux pour la deuxième question du devoir 2, nous avons ajouté beaucoup de solutions qui étaient essentiellement identiques, simplement une symétrie des autres jeux déjà énumérés.
+Nous sommes maintenant prêts à implémenter MENACE. Si vous ne l’avez pas encore fait, vous devriez vraiment lire l’article publié par Donald Michie en 1961 dans Science Survey, intitulé Trial and error.
 
-Examinons les symétries dans une grille de n × m. Supposons d’abord que n 􏰀 m, c’est-à-dire que la grille n’est pas carrée. Dans le cas d’une grille non carrée, nous avons essentiellement deux symétries : le basculement vertical et le basculement horizontal (Figure 1).
+Cet article a été réimprimé dans le livre On Machine Intelligence et se trouve à la page 11 sur ce site :
 
-![Figure 1 : Les grilles non carrées ont deux axes de symétrie.](figure01_non_square_symmetry.png)
-**Figure 1 : Les grilles non carrées ont deux axes de symétrie.**
+* https://www.gwern.net/docs/ai/1986-michie-onmachineintelligence.pdf
 
-Pour chaque grille non carrée n × m, il y a jusqu’à trois grilles différentes mais symétriques : celle obtenue avec une symétrie verticale, celle obtenue avec une symétrie horizontale, et celle obtenue avec une combinaison des deux symétries (Figure 2).
+Vous pouvez également regarder
 
-![Figure 2: Les grilles non carrées ont jusqu’à trois grilles symétriques équivalentes.](figure02_non_square_symmetry.png)
-**Figure 2: Les grilles non carrées ont jusqu’à trois grilles symétriques équivalentes.**
+* https://www.youtube.com/watch?v=R9c-_neaxeU
 
-Ce qui sera pratique, c’est qu’il est possible d’itérer à travers toutes ces symétries en appliquant des transforma- tions répétées, par exemple la série symétrie horizontale, puis verticale, puis horizontale vous donnera les quatre grilles, comme le montre Figure 3.
+**Dans ce qui suit, nous ne traiterons que des jeux 3 × 3, car c’est ce qui a été défini dans le document.** Vous n’avez pas à vous soucier des autres tailles de jeux, seulement 3 × 3.
 
-![Figure 3: Enumération de toutes les grilles symétriques non carrées.](figure03_non_square_symmetry.png)
-**Figure 3: Enumération de toutes les grilles symétriques non carrées.**
+Nous vous avons donné tout ce qui est nécessaire pour cette partie, vous n’avez donc qu’à vous concentrer sur la réalisation de `ComputerMenacePlayer` et `MenaceGame`. Vous devez cependant utiliser une solution fonctionnelle du devoir 3.
 
-Les choses sont un peu plus compliquées lorsque la grille est carrée. En plus des symétries horizontales et verticales, nous avons les deux diagonales, ainsi que la rotation (Figure 4).
+Dans notre solution, nous avons notre joueur MENACE, qui joue contre une série de joueurs possibles : un humain, un joueur aléatoire, un joueur parfait ou un autre joueur MENACE.
 
-![Figure 4: Les grilles carrées ont 4 axes de symétrie, et peuvent également être tournées de 90 degrés.](figure04_non_square_symmetry.png)
-**Figure 4: Les grilles carrées ont 4 axes de symétrie, et peuvent également être tournées de 90 degrés.**
+Le joueur humain et le joueur aléatoire ont déjà été implémentés dans les devoirs précédents. Nous fournissons une implémentation d’un joueur parfait. Vous n’avez pas à comprendre comment il fonctionne précisément (mais bien sûr, vous le pouvez !) mais vous devez absolument jeter un coup d’œil au code car cela vous aidera beaucoup pour l’implémentation de MENACE.
 
-Chaque carré nous donne maintenant jusqu’à 7 autres grilles différentes mais symétriques, comme le montre la Figure 5.
+Nous avons apporté quelques modifications à la conception :
 
-![Figure 5: Les grilles carrées ont 7 grilles symétriques équivalents.](figure05_non_square_symmetry.png)
-**Figure 5: Les grilles carrées ont 7 grilles symétriques équivalents.**
+Tout d’abord, nous souhaitons que nos joueurs partagent des méthodes supplémentaires. Auparavant, il suffisait qu’un joueur donne une implémentation concrète de la méthode play.
 
+Maintenant, nous voulons pouvoir informer le joueur qu’un nouveau jeu commence et qu’un jeu est terminé. Nous voulons que le joueur conserve quelques statistiques sur ses performances : combien de fois il a gagné et perdu au total, ainsi qu’au cours des 50 dernières parties (pour suivre ses progrès). La mise en œuvre de certaines de ces méthodes est commune à tous les joueurs, c’est pourquoi nous souhaitons ajouter le code directement dans Player.
 
-Encore une fois, il est possible d’itérer à travers les 8 différentes grilles («carrées») mais équivalents et symétriques, par exemple avec la séquence rotation-rotation-rotation-symétrie horizontale - rotation-rotation-rotation-rotation, comme le montre la figure 6.
-
-![Figure 6: Enumération de tous les grilles carrées symétriques.](figure06_non_square_symmetry.png)
-**Figure 6: Enumération de tous les grilles carrées symétriques.**
-
-## Étape 1 : Créer Transfomer.java
-
-Il ressort de la discussion ci-dessus que la mise en œuvre de la symétrie horizontale, de la symétrie verticale et de la rotation de 90 degrés (dans le sens des aiguilles d’une montre) est suffisante pour obtenir toutes les grilles symétriques possibles, qu’ils soient carrés ou non.  Nous allons créer une nouvelle classe Transformer pour gérer toutes les symétries de transformation.
-
-```java
-public class Transformer {
-
-}
-```
-
-### Ajouter une énumération des types de rotation
-
-Nous voulons ajouter une énumération de toutes les rotations possibles en créant une class `enum` dans notre classe `Transformer`.
-
-```java
-  /**
-   * An static enum  for the types of
-   * allowable transformations
-   */
-  public static enum Type {
-    UNKNOWN,
-    IDENTITY,
-    ROTATION,
-    VERTICAL_SYMMETRY,
-    HORIZONAL_SYMMETRY,
-  }
-```
-
-Le `UNKNOWN` est utile pour les tests, et le` IDENTITY` ne fait aucune rotation du tout.
+Cependant, `Player` est une interface nous empêchant de le faire. Nous l’avons donc transformé en une classe à part entière. Nous ne pouvons toujours pas fournir une implémentation par défaut pour la méthode `play`, de sorte que cette méthode est toujours abstract, donc Player est maintenant une classe abstraite. Nous avons fourni l’implémentation pour toutes les autres méthodes de la classe Player.
 
 
-### Mettre en œuvre les transformations
+Second, some of our players will need specialized version of TicTacToe. For example, our perfect player needs to enhance TicTacToe instances to record which of the possible moves are winning and which ones are losing. So we created the inner class PerfectGame, which has a TicTacToe game, but also tracks the outcome of each move
+(win/lose/draw) and how many moves until that outcome.
 
-Nous allons ajouter cinq méthodes dans Transformer.java.
+Deuxièmement, certains de nos joueurs auront besoin d’une version spécialisée de TicTacToe. Par exemple, notre joueur idéal doit enregistrer les coups possibles qui sont gagnants et ceux qui sont perdants. Nous avons donc créé la classe PerfectGame, que ComputerPerfectPlayer utilise pour enregistrer les informations supplémentaires.
 
-Cette méthode utilise l'énum ci-dessus et appelle les méthodes de transformation individuelles.
+Le fonctionnement de la classe est le suivant : lorsqu’une instance de `ComputerPerfectPlayer` est créée, elle crée d’abord la liste de tous les jeux possibles, comme nous l’avons fait pour le devoir 3. Le joueur compose ensuite toutes les jeux dans les `PerfectGames`. Une fois la liste créée, l’instance `ComputerPerfectPlayer` précalcule tous les coups de toutes les parties possibles pour déterminer ceux qui doivent être joués et ceux qui doivent être évités.
 
-```java
-  /**
-   * Applies the transformation specified as parameter
-   * to board
-   *
-   * If the transformation was successful return true, if not return false;
-   */
-  public static boolean transform(Type transformation, int numRows, int numColumns, int[] board) {
 
-    switch(transformation) {
-    case IDENTITY:
-      return identity(numRows, numColumns, board);
-    case ROTATION:
-      return rotate90(numRows, numColumns, board);
-    case VERTICAL_SYMMETRY:
-      return verticalFlip(numRows, numColumns, board);
-    case HORIZONAL_SYMMETRY:
-      return horizontalFlip(numRows, numColumns, board);
-    default:
-      return false;
-    }
-  }
-```
+Elle est alors prête à jouer les parties. Lorsque sa méthode play est appelée, elle reçoit une instance de `TicTacToe` comme paramètre, qui est l’état actuel de la partie. Il consulte sa liste de toutes les parties précalculées pour trouver celle qui correspond à l’état actuel de la partie (jusqu’à la symétrie), puis sélectionne à partir de là l’un des meilleurs coups possibles, tel que précalculé lors de l’initialisation. `ComputerMenacePlayer` fonctionnera de la même manière.
 
-Conformément à notre approche précédente, les grilles vont être mémorisées à l’aide d’un tableau unidimensionnel. Pour des raisons qui deviendront très bientôt évidentes, nous utiliserons un tableau d’entiers pour notre grille. Chacune des méthodes aura trois paramètres : le nombre de lignes et le nombre de colonnes de la grille, et une référence au tableau d’entiers représentant la grille. Vous devez implémenter les méthodes de classe dans la classe Transformer.java, c’est-à-dire :
+L’essentiel de MENACE est qu’il pré-calcule toutes les parties possibles (tenant compte des symétries), et pour chaque partie, il fournit initialement un certain nombre de billes pour chaque coup possible. Lorsqu’il joue une partie, MENACE trouve la partie correspondant à l’état actuel et choisit au hasard une des billes qu’il possède pour cette partie. Plus un coup donné possède de billes à ce stade, plus il a de chances d’être sélectionné. Une fois la partie terminée, MENACE met à jour le nombre de billes pour chacun des coups utilisés au cours de la partie, en fonction du résultat : si la partie a été perdue, les billes qui ont été sélectionnées seront retirées, ce qui rendra moins probable la sélection de coups similaires dans le futur.
 
-#### Identity
+Cette approche pose un problème : il est possible de retirer la dernière bille d’une partie de cette manière, auquel cas la menace sera bloquée si la partie est à nouveau jouée dans le futur, sans qu’aucun coup n’ait la moindre chance d’être sélectionné. Pour éviter cela, nous n’enlevons une bille que si elle n’est pas la dernière de la partie.
 
-```java
-public static boolean identity(int numRows, int numColumns, int[] board) {
-```
+En résumé :
 
-Sets the board to the identity board where the value at each index is the index itself (in other words do a "no flip" flip).  Here we ignore the current values withiin the provided board and populate each index with its index value.
+* Si le jeu est nul, la bille est remise en place et une autre bille similaire est ajoutée à chaque fois, augmentant un peu plus la chance de sélectionner ce coup dans le futur.
 
-For example, the identity board of a 3x3 game is
+* Si la partie est gagnée, la bille est remise en place et trois autres billes similaires sont ajoutées.
+
+* Si la partie est perdue, la bille n'est pas remise
+
+* Ne retirez pas la dernière bille d'une partie.
+
+On vous demande de fournir une implémentation de `ComputerMenacePlayer` qui se comporte comme prévu. Vous devez également implémenter `MenaceGame` que les instances de `ComputerMenacePlayer` utilisent pour pré-calculer toutes les parties possibles et enregistrer le nombre actuel de billes pour chaque coup possible de chaque partie possible.
+
+Dans le document, on suppose que MENACE joue toujours le premier coup (et nos expériences suggèrent en fait que MENACE apprend beaucoup mieux à être un premier joueur qu’un deuxième joueur). L’instance principale de MENACE dans notre système est également réglée pour toujours jouer en premier (bien que vous puissiez facilement changer cela dans le code), mais puisque nous pouvons jouer MENACE contre MENACE, nous devons avoir une implémentation qui peut jouer à la fois X et O. Le document précise le nombre initial de billes pour X seulement. Nous utiliserons des nombres légèrement différents pour X (8,4,2,1 au lieu de 4,3,2,1) et nous utiliserons des nombres similaires pour O. En d’autres termes, le nombre initial de billes est
+
+* Première position (X): 8 billes
+* Deuxième position (O): 8 billes
+* Troisième position (X): 4 billes
+* Quatrième position (O): 4 billes
+* Cinquième position (X): 2 billes
+* Sixième position (O): 2 billes
+* Septième position (X): 1 bille
+* Huitième position (O): 1 bille
+* Neuvième position (X): 1 bille
+
+Le fonctionnement du système que nous fournissons est le suivant :
+
+1. Une nouvelle instance de MENACE est créée.
+
+2. Cette instance n’a pas été entraînée et est donc très faible. Vous pouvez choisir l’adversaire, qui est soit un ordinateur (aléatoire, parfait ou MENACE), soit un humain (vous).
+
+3. Si vous choisissez un adversaire contrôlé par l’ordinateur, le système lancera automatiquement 500 parties entre MENACE et cet adversaire, au cours desquelles MENACE devrait améliorer son jeu (surtout la première fois) et devrait ensuite être beaucoup plus difficile à battre.
+
+4. Nous avons également inclus une option pour réinitialiser MENACE, afin que vous puissiez facilement recommencer une étape d’apprentissage à partir de zéro.
+
+
+## Entraînée votre joueur MENANCE
+
+Voici un exemple de fonctionnement du système.
 
 ```
- 0 | 1 | 2
-----------
- 3 | 4 | 5
-----------
- 6 | 7 | 8
+java GameMain
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
 ```
 
-#### Inversé horizontale
-
-```java
-public static void horizontalFlip(int numRows, int numRows, int[] board)
-```
-
-Effectue une symétrie horizontale sur les éléments de la grille numRows × numRows enregistrés dans le tableau référé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
-
-Si l'on considère une grille 3x3.
+Nous allons d’abord effectuer deux tours contre un humain ("1") :
 
 ```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
+1
 ```
 
-La grille inversé horizontalement mis à jour serait
+Et le sorti.
 
 ```
- 7 | 8 | 9
-----------
- 4 | 5 | 6
-----------
- 1 | 2 | 3
-```
+   | X |
+-----------
+   |   |
+-----------
+   |   |
 
-#### Inversé vertical
-
-```java
-public static void verticalFlip(int numRows, int numRows, int[] board)
-```
-
-Effectue une symétrie verticale sur les éléments de la grille numRows × numRows enregistrés dans le tableau référencé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
-
-Si l'on considère une grille 3x3.
-
-```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
-```
-
-La grille inversé verticalement mis à jour serait
-
-```
- 3 | 2 | 1
-----------
- 6 | 5 | 4
-----------
- 9 | 8 | 7
-```
-
-#### Rotation à 90 degrés
-
-```java
-public static void rotate(int numRows, int numRows, int[] board);
-```
-
-Pivote de 90 degrés dans le sens des aiguilles d’une montre les éléments de la grille numRows × numRows enregistrés dans le tableau référencé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
-
-Si l'on considère une grille 3x3.
-
-```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
-```
-
-La nouvelle grille pivotée de 90 degrés serait
-
-```
- 7 | 4 | 1
- ----------
- 8 | 5 | 2
- ----------
- 9 | 6 | 3
-```
-
-Notez que vous ne pouvez faire pivotée que des grille n x n.
-
-
-### Test manuel du Transformer
-
-Toutes les méthodes doivent vérifier les entrées fournies et gérer tous les cas possibles selon les besoins. La classe Transformer.java à les tests suivants:
-
-
-```java
-  private static void test(int numRows, int numColumns) {
-    int[] test;
-    test = new int[numRows*numColumns];
-
-    System.out.println("testing " + numRows + " numRows and " + numColumns + " numColumns.");
-
-    identity(numRows, numColumns, test);
-    System.out.println(java.util.Arrays.toString(test));
-
-    horizontalFlip(numRows,numColumns,test);
-    System.out.println("HF => " + java.util.Arrays.toString(test));
-
-    horizontalFlip(numRows,numColumns,test);
-    System.out.println("HF => " + java.util.Arrays.toString(test));
-
-    verticalFlip(numRows,numColumns,test);
-    System.out.println("VF => " + java.util.Arrays.toString(test));
-
-    verticalFlip(numRows,numColumns,test);
-    System.out.println("VF => " + java.util.Arrays.toString(test));
-
-    for(int i = 0; i < 4; i++) {
-      boolean didTransform = rotate90(numRows,numColumns,test);
-      if (didTransform) {
-        System.out.println("ROT => " + java.util.Arrays.toString(test));
-      }
-    }
-  }
-
-  public static void main(String[] args) {
-    int[] test;
-    int numRows, numColumns;
-
-    test(2,2);
-    test(2,3);
-    test(3,3);
-    test(4,3);
-    test(4,4);
-  }
-```
-
-L'exécution des tests ci-dessus devrait produire la sortie suivante:
-
-```java
-$ javac Transformer.java
-$ java Transformer
-```
-
-La sortie ressemblerait à
-
-```java
-testing 2 numRows and 2 numColumns.
-[0, 1, 2, 3]
-HF => [2, 3, 0, 1]
-HF => [0, 1, 2, 3]
-VF => [1, 0, 3, 2]
-VF => [0, 1, 2, 3]
-ROT => [2, 0, 3, 1]
-ROT => [3, 2, 1, 0]
-ROT => [1, 3, 0, 2]
-ROT => [0, 1, 2, 3]
-testing 2 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5]
-HF => [3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5]
-VF => [2, 1, 0, 5, 4, 3]
-VF => [0, 1, 2, 3, 4, 5]
-testing 3 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8]
-HF => [6, 7, 8, 3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-VF => [2, 1, 0, 5, 4, 3, 8, 7, 6]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-ROT => [6, 3, 0, 7, 4, 1, 8, 5, 2]
-ROT => [8, 7, 6, 5, 4, 3, 2, 1, 0]
-ROT => [2, 5, 8, 1, 4, 7, 0, 3, 6]
-ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-testing 4 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-HF => [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-VF => [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-testing 4 numRows and 4 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-HF => [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-VF => [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-ROT => [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
-ROT => [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-ROT => [3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12]
-ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-```
-
-## Étape 2: Génération de tous les jeux non symétriques n × m
-
-Dans le devoir 2, nous avons déjà créé une méthode qui génère tous les jeux possibles pour une taille de grille donnée. Cette méthode ajoutait un jeu à la liste uniquement si le jeu n’était pas égale à un jeu qui était déjà là. De ce point de vue, il suffit donc de modifier légèrement cette méthode pour n’ajouter un jeu que s’il n’est pas égale ou symétrique à un jeu qui existe déjà.
-
-### Mettre à jour `equals` à inclure des grilles symétriques
-
-Mettez à jour la méthode `equals` de` TicTacToe` pour considérer également les jeux symétriques comme égaux. Une fois mis à jour, le `generateAllGames` dans` TicTacToeEnumerations` générera la liste des listes que nous cherchons.
-
-Si l'on considère une grille 3x3.
-
-```
+O to play: 1
+ O | X |
+-----------
  X |   |
-----------
+-----------
    |   |
-----------
-   |   |
+
+O to play: 5
+ O | X |
+-----------
+ X | O |
+-----------
+   |   | X
+
+O to play: 3
+ O | X | O
+-----------
+ X | O |
+-----------
+   | X | X
+
+O to play: 7
+
+Result: OWIN
+ O | X | O
+-----------
+ X | O |
+-----------
+ O | X | X
+
+Player 1 has won 0 games, lost 1 games, and 0 were draws.
+
+Player 2 has won 1 games, lost 0 games, and 0 were draws.
 ```
 
-Il devrait être mis à jour afin que le tableau symétrique suivant soit également égal à
+Jouons un deuxième jeux.
+
+```
+1
+```
+
+Et le sorti.
+
+```
+   |   |
+-----------
+   |   | X
+-----------
+   |   |
+
+O to play: 1
+ O |   | X
+-----------
+   |   | X
+-----------
+   |   |
+
+O to play: 9
+ O |   | X
+-----------
+   | X | X
+-----------
+   |   | O
+
+O to play: 4
+ O | X | X
+-----------
+ O | X | X
+-----------
+   |   | O
+
+O to play: 7
+
+Result: OWIN
+ O | X | X
+-----------
+ O | X | X
+-----------
+ O |   | O
+
+Player 1 has won 0 games, lost 2 games, and 0 were draws.
+
+Player 2 has won 2 games, lost 0 games, and 0 were draws.
+```
+
+Comme on peut le voir, jusqu’à présent, MENACE ne joue pas très bien et a perdu deux fois de suite bien qu’il ait été le premier joueur. Entraînons-le maintenant contre un joueur parfait :
+
+```
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+2
+```
+
+Et le sorti.
+
+```
+About to train with 500 games.
+Player 1 has won 0 games, lost 182 games, and 318 were draws.
+Over the last 50 games, this player has won 0, lost 4, and tied 46.
+
+Player 2 has won 182 games, lost 0 games, and 318 were draws.
+Over the last 50 games, this player has won 4, lost 0, and tied 46.
+```
+
+MENACE (qui est ici le joueur 1) a perdu 182 matchs contre le joueur parfait
+sur les 500 qui ont été joués, et seulemnt 4 au cours des 50 derniers matchs.
+
+Essayons encore une fois contre un joueur humain :
+
+```
+   |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+O to play: 5
+   |   |
+-----------
+ X | O |
+-----------
+ X |   |
+
+O to play: 1
+ O |   |
+-----------
+ X | O |
+-----------
+ X |   | X
+
+O to play: 8
+ O | X |
+-----------
+ X | O |
+-----------
+ X | O | X
+
+O to play: 3
+
+Result: DRAW
+ O | X | O
+-----------
+ X | O | X
+-----------
+ X | O | X
+```
+
+Maintenant, MENACE est un bien meilleur joueur, et joue en effet très bien et a obtenu un match nul. Notez cependant qu’il n’est pas parfait et qu’il peut encore être battu.
+
+Regardez la prochaine partie :
 
 ```
    |   | X
-----------
+-----------
    |   |
-----------
+-----------
+   |   |
+
+O to play: 1
+ O |   | X
+-----------
+   | X |
+-----------
    |   |
 ```
 
-Continuez a lire pour savoir comment effectuer ce changement.
-
-
-### Indirection
-
-Afin d’implémenter `equals` dans `TicTacToe`, nous devrons passer en boucle tous les jeux symétriques possibles pour voir si nous avons une correspondance. Bien sûr, nous pourrions simplement appliquer les symétries sur le jeu lui-même. Nous appliquerions ainsi des transformations sur la grille jusqu’à ce qu’elle corresponde à la grille du jeu auquel nous la comparons (auquel cas elle est symétrique) ou que nous n’ayons plus de jeux symétriques (auquel cas elle n’est pas symétrique).
-
-Cependant, changer le tableau lui-même peut avoir des effets secondaires non désirés. Par exemple, imaginez que nous imprimons le jeu à l’utilisateur. Ce qui se passerait, c’est que, puisque le jeu est basculé vers des jeux symétriques équivalents, le jeu présenté à l’utilisateur pourrait être un jeu différent mais symétrique à chaque fois, ce qui ne serait clairement pas souhaitable.
-
-C’est pourquoi nous allons introduire un niveau d’indirection pour calculer nos symétries.
-
-```java
-  /**
-   * The transformed board
-   * Initialized as the identity (board), i.e. no changes
-   * it will store the transformed index of each value
-   * in the underlying board
-   */
-  int[] boardIndexes;
-
-  /**
-   * What are all the allowable transformations of this board
-   * There are more transformations for square boards
-   */
-  int allowableIndex;
-  Transformer.Type[] allowable;
-```
-
-Le tableau lui-même restera inchangé, mais nous utiliserons un autre tableau qui fera correspondre les indices du tableau à leurs emplacements symétriques actuels. Nous utiliserons une variable d’instance, le tableau d’entier `boardIndexes` pour enregistrer l’indirection.
-
-Au départ, comme il n’y a pas de transformation, nous avons toujours `board[i]==board[boardIndexes[i]]` (la transformation d'identité). Mais après avoir appliqué quelques symétries au jeu, `boardIndexes[i]` enregistre où l’index `i` du jeu est mis en correspondance dans la symétrie.
-
-
-### Itérer sur des tableaux symétriques
-
-Pour itérer le tableau symétrique, nous avons besoin d'une stratégie. Chaque grille a quatre ou huit positions symétriques selon qu'elle est carrée ou non. Nous proposons un mécanisme pratique pour itérer toutes les positions possibles, en utilisant de nouvelles méthodes d'instance
+Ici, nous (joueur 2) allons faire un jeu terrible (exprès, je jure) et voir comment le joueur MENACE réagit.
 
 ```
-  /**
-   * Reset the board back to it's original position
-   */
-  public void reset() { ... }
-
-  /**
-   * Can we rotate the board anymore?
-   */
-  public boolean hasNext() { ... }
-
-  /**
-   * Rotate the board to based on the next allowable rotation
-   */
-  public boolean next() { ... }
+O to play: 4
+ O | X | X
+-----------
+ O | X |
+-----------
+   |   |
 ```
 
-* `hasNext()` retourne true si et seulement si un appel à la méthode next réussirait, et false sinon.
-* `next()` transformera les `boardIndexes` de la grille pour correspondre à la prochaine transformation disponible, elle va retourner `true` si cela était possible et `false` s'il ne reste plus d'itérations.
-* `reset()` remet le `boardIndexes` dans l'état initial `identity`
+On voit que MENACE n'a pas fait le meilleur choix pour gagner le match. Le joueur MENACE a
+pas du tout formé pour gérer ces scénarios comme notre joueur parfait
+aurait joué. Cela illustre certains des défis de l’apprentissage machine, mais c’est une toute autre discussion !
 
-Le programme Java suivant illustre l’utilisation souhaitée pour next, et reset (notez que `hasNext` n'était pas nécessaire car `next` effectue le vérification pour nous). La méthode `toString` a été mise à jour pour renvoyer la version transformée du jeu.
 
-```java
-public class Test {
+## Implementation Details and Hints
 
-  private static void printTest(TicTacToe g) {
-    System.out.println("PRINTING GAME");
-    g.reset();
-    while (g.next()) {
-      System.out.println(g.toString());
-      System.out.println("");
-    }
+Vous êtes responsable de la mise en œuvre
 
-    System.out.println("reset:");
-    g.reset();
-    while (g.next()) {
-      System.out.println(g.toString());
-      System.out.println("");
-    }
-    System.out.println("DONE PRINTING GAME");
+* ComputerMenacePlayer.java
+* MenaceGame.java
+
+Voici quelques conseils pour vous aider à déboguer en cours de route.
+
+### GameOutput
+
+Du point de vue d'un joueur, un jeu a un résultat de WIN, DRAW,
+PERDRE ou INCONNU.
+
+```
+public enum GameOutcome {
+  WIN,
+  DRAW,
+  LOSE,
+  UNKNOWN;
+
+  public boolean isBetter(GameOutcome other) {
+    return this.compareTo(other) < 0;
   }
 
-  public static void main(String[] args) {
-    TicTacToe g;
-
-    System.out.println("Test on a 3x3 game");
-    g = new TicTacToe();
-    g.play(0);
-    g.play(2);
-    g.play(3);
-    printTest(g);
-
-    printTest(g);
-    System.out.println("Test on a 5x4 game");
-    g = new TicTacToe(4,5,3);
-    g.play(0);
-    g.play(2);
-    g.play(3);
-    printTest(g);
+  public boolean asGoodOrBetter(GameOutcome other) {
+    return this.compareTo(other) <= 0;
   }
 }
 ```
 
-Les sorties d'exécution de code sont ci-dessus:
+Ceci est utile lors de la mise à jour du nombre de billes dans notre MenaceGame.
+
+
+### Petits ensembles d'entraînement
+
+Le `GameMain` a deux (4ieme et 5ieme) paramètres supplémentaires  pour vous aider à déboguer. Le quatrième paramètre est le nombre de matchs d'entraînement entre les joueurs de l'ordinateur (par défaut c'est 500).
+
+Par exemple:
 
 ```
-Test on a 3x3 game
-PRINTING GAME
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-reset:
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-DONE PRINTING GAME
-PRINTING GAME
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-reset:
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-DONE PRINTING GAME
-Test on a 5x4 game
-PRINTING GAME
-   | X | O |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   | X | O |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   | O | X |
-
-   |   | O | X |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-reset:
-   | X | O |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   | X | O |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   | O | X |
-
-   |   | O | X |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-DONE PRINTING GAME
+java GameMain 3 3 3 1
 ```
 
-Nous n'avons besoin que de trois transformations pour identifier les jeux symétriques:
-
-* symétrie verticale (`VERTICAL_SYMMETRY`)
-* symétrie horizontale (`HORIZONAL_SYMMETRY`)
-* Rotation à 90 degrés (`ROTATION`)
-
-Nous devons également avoir un `reset` pour démarrer (et réinitialiser) le jeu dans son état d'origine
-
-* transformation de l'identité (`IDENTITY`)
-
-#### Mettez à jour Transformer pour déterminer les transformations autorisées
-
-Mettez à jour `Transformer` pour renvoyer un tableau de `Transformer.Type`s basé sur le
-règles ci-dessus dans
+Créera notre 3x3 grille (3 pour gagner), mais on va entrainer pour 1 match seulement (pas 500).
 
 ```
-public static Type[] symmetricTransformations(int numRows, int numColumns) {
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+2
+
+Result: OWIN
+   | X | X
+-----------
+ O | O | O
+-----------
+   | X |
+
+Player 1 has won 0 games, lost 1 games, and 0 were draws.
+
+Player 2 has won 1 games, lost 0 games, and 0 were draws.
 ```
 
-Suite à un appel à la méthode `reset()`, chaque appel à la méthode `next()` modifie l'orientation du jeu en fonction de la liste d'opérations suivante:
+### indicateur de débogage
 
-##### Grille non carrées
+Le cinquièmes paramètre de `GameMain` définit un indicateur `isDebug` que vous pouvez utiliser pour sortir des informations supplémentaires.
 
-* IDENTITY
-* HORIZONAL_SYMMETRY
-* VERTICAL_SYMMETRY
-* HORIZONAL_SYMMETRY
+Voici comment cet indicateur est utilisé dans `ComputerPerfectPlayer`.
 
-##### Grilles carrées
+```
+java GameMain 3 3 3 1 true
+```
 
-* IDENTITY
-* ROTATION
-* ROTATION
-* ROTATION
-* HORIZONAL_SYMMETRY
-* ROTATION
-* ROTATION
-* ROTATION
+Let's play against the perfect player
 
+```
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+7
+```
 
-#### Mettre à jour TicTacToe pour prendre en charge les transformations
+Nous voyons maintenant
 
-Ajoutez toutes les variables d'instance nécessaires pour implémenter les méthodes:
+```
+Perfect player choosing based on:
+OVERALL: DRAW(5)
+ D 5 | D 5 | D 5
+-----------
+ D 5 | D 5 | D 5
+-----------
+ D 5 | D 5 | D 5
+```
 
-* `hasNext`,
-* `next`, et
-* `reset`
+Qui montre les scénarios `W`in, `L`ose ou `D`raw avant de choisir.
 
-Mettez à jour la méthode `equals` qui retourne vrai si et seulement si cette instance de` TicTacToe` et `other` sont identiques, y compris les grilles symétriques en utilisant les méthodes ci-dessus.
+```
+ X |   |
+-----------
+   |   |
+-----------
+   |   |
 
-La méthode de classe `generateAllGames` dans `TicTacToeEnumerations` est déjà
-implémenté et utilise la méthode `equals` pour générer la liste des jeux.
+O to play:
+```
 
-Voici quelques exécutions avec la mis à jour de la méthode `equals`.
-
+Voici l'extrait de code qui permet cela.
 
 ```java
-java EnumerationsMain
+if (isDebug) {
+  System.out.println("Perfect player choosing based on: ");
+  System.out.println(perfectGame);
+  System.out.println("");
+}
 ```
 
-Sorti
-
-
-```bash
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 3 element(s) (3 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 38 element(s) (38 still playing)
-======= level 4 =======: 108 element(s) (108 still playing)
-======= level 5 =======: 174 element(s) (153 still playing)
-======= level 6 =======: 204 element(s) (183 still playing)
-======= level 7 =======: 153 element(s) (95 still playing)
-======= level 8 =======: 57 element(s) (34 still playing)
-======= level 9 =======: 15 element(s) (0 still playing)
-that's 765 games
-91 won by X
-44 won by O
-3 draw
-```
-
-Un autre exemple
-
-```java
-java EnumerationsMain 4 4 2
-```
-
-Sorti
+Vous pouvez faire quelque chose de similaire dans `ComputerMenancePlayer`, comme montré ci-dessous
 
 ```
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 3 element(s) (3 still playing)
-======= level 2 =======: 33 element(s) (33 still playing)
-======= level 3 =======: 219 element(s) (141 still playing)
-======= level 4 =======: 913 element(s) (587 still playing)
-======= level 5 =======: 3338 element(s) (883 still playing)
-======= level 6 =======: 4702 element(s) (1217 still playing)
-======= level 7 =======: 7048 element(s) (511 still playing)
-======= level 8 =======: 2724 element(s) (194 still playing)
-======= level 9 =======: 1119 element(s) (0 still playing)
-that's 20100 games
-10189 won by X
-6341 won by O
-0 draw
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+1
 ```
+
+Le joueur Menace montre alors le nombre aléatoire qu'il a obtenu et le tableau TicTacToe avec le nombre de billes dans chaque position ouverte.
+
+```
+Menace rolled 9 on board:
+POSITION: 2 (Odds 31)
+ 8 | 8 | 4
+-----------
+ 4 | 2 | 2
+-----------
+ 1 | 1 | 1
+```
+
+Une mise en œuvre fonctionnelle de Menace jouerait donc en position 2.
+
+
+```
+   | X |
+-----------
+   |   |
+-----------
+   |   |
+```
+
 
 ## Soumission
 
@@ -832,11 +489,10 @@ Les erreurs de soumission affecteront vos notes.
 Soumettez les fichiers suivante.
 
 * STUDENT.md
-* TicTacToe.java
-* Transformer.java
+* ComputerMenacePlayer.java
+* MenaceGame.java
 
 Cette soumission peut se faire en groupe de 2 +/- 1 personne. Assurez-vous que `STUDENT.md` inclut les noms de tous les participants; ne soumettez qu'une seule solution par groupe.
-
 
 ## Intégrité académique
 

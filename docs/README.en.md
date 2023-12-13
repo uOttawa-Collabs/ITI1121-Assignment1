@@ -1,824 +1,490 @@
 <center>
   <h1>ITI 1121. Introduction to Computing II</h1>
-  <h3>Assignment 3</h3>
-  <h3>Deadline: Jul 09, 2020 at 11pm</h3>
+  <h3>Assignment 4</h3>
+  <h3>Deadline: Jul 28, 2020 at 11pm</h3>
 </center>
 
 ## Learning objectives
 
-* Iterating through different states
-* Using indirection
+* Inheritance, Composition and Abstract Classes
+* Introduction to Machine Learning
 
 ## Introduction
 
-In the previous assignment, we allowed symmetric games to be processed. In this assignment, we will remove those symmetric games to make our search space smaller.
+We have created the basis for our implementation of MENACE, an automated system learning how to play Tic-Tac- Toe. In this assignment, we will use the solution of assignment 3, you must thus complete it first. We will use our previous work to create our own implementation of Donald Michie’s 1961 paper.
 
-## Symmetries and iterators
+## Menace
 
-When we created our list of games in Q2 of assignment 2, we added a lot of solutions that were essentially identical, simply a symmetry of other games already listed.
+We are now ready to implement Menace. If you have not already done so, you should really read the paper published by Donald Michie in 1961 in Science Survey, titled Trial and error.
 
-Let’s looks at symmetries in a nxm grid. Let’s first assume that n 􏰀 m, that is, the grid is not square. In the case of a non-square grid, we have essentially two symmetries: vertical flip, and horizontal flip (Figure 1).
+That paper has been reprinted in the book On Machine Intelligence and can be found on page 11 at the following:
 
-![Figure 1: Non-square boards have 2 axes of symmetry.](figure01_non_square_symmetry.png)
-**Figure 1: Non-square boards have 2 axes of symmetry.**
+* https://www.gwern.net/docs/ai/1986-michie-onmachineintelligence.pdf
 
-For each such non-square nxm grid, there are up to 3 different but symmetrical grids: the one obtain with a vertical symmetry, the one obtained with a horizontal symmetry, and the one obtain with a combination of both symmetries (Figure 2).
+You can also watch
 
-![Figure 2: Non-square boards have up to 3 symmetrical equivalent grids.](figure02_non_square_symmetry.png)
-**Figure 2: Non-square boards have up to 3 symmetrical equivalent grids.**
+* https://www.youtube.com/watch?v=R9c-_neaxeU
 
-Something that will come in handy is that it is possible to iterate through all of these symmetries by repeatedly applying transformations, for example the series horizontal, then vertical, then horizontal symmetry will give you all four boards, as shown Figure 3.
+**In the following, we are only going to deal with 3x3 games, because that is what was defined in the paper.** You do not have to worry about other board sizes, only 3x3.
 
-![Figure 3: Enumerating all non-square symmetrical boards.](figure03_non_square_symmetry.png)
-**Figure 3: Enumerating all non-square symmetrical boards.**
+We have given you everything that is required for this part, so you only need to focus on the implementation of `ComputerMenacePlayer` and `MenaceGame`. However, you need to use a working solution of assignment 3.
 
-Things are a little bit more complicated when the grid is square. In addition to horizontal and vertical symmetries, we have both diagonals, and well as rotation (Figure 4).
+In our solution, we have our MENACE player, playing against a range of possible players: a human, a random player, a prefect player, or another MENACE player.
 
-![Figure 4: Square board have 4 axes of symmetry, and can be rotated 90 degrees as well](figure04_non_square_symmetry.png)
-**Figure 4: Square board have 4 axes of symmetry, and can be rotated 90 degrees as well**
+The human player and the random player were already implemented in the previous assignments. We do provide an implementation of a perfect player. You do not need to understand how it works precisely (but of course, you can!) but you should definitely have a look at the code since this will help you a lot for the implementation of MENACE.
+
+We have done a couple of changes in the design:
+
+First, we now would like our Players to share some additional methods. It used to be that all a Player had to do was to give a concrete implementation of the method play.
+
+Now, we want to be able to inform the Player that a new game is starting and that a game is finished. We want the player to keep some stats about its performance: how often it won and lost overall, as well as over the last 50 games (to track progress). The implementation of some of these methods are common to all Players, so we would like to add the code directly in Player.
+
+However, `Player` was an interface which prevented us to do this. So we transformed it in a full fledged class. We still cannot provide a default implementation for the method `play`, so that method is still abstract, therefore Player is now an abstract class. We have provided the implementation for all the other methods of the class Player.
+
+Second, some of our players will need to augment a TicTacToe with additional details. For example, our perfect player needs to record which of the possible moves are winning and which ones are losing.  We created a new class `PerfectGame` that will be composed of a `TicTacToe` game, but also tracks the outcome of each move (win/lose/draw) and how many moves until that outcome.  The `PerfectGame` is used by `ComputerPerfectPlayer` to be the perfect player.
+
+The way the class works is that when an instance of `ComputerPerfectPlayer` is created, it first creates the list of all possible games, as we did in Assignment 3.  The player then unravels all wins, all losses and all draws into PerfectGames so that it can determine which ones should be played, and which ones should be avoided.
+
+It is then ready to play games. When its method play is called, it receives an instance of `TicTacToe` and looks through the precomputed games to find which one corresponds to the current state of the game (up to symmetry) and then selects from there one of the best possible moves, as precomputed during initialization. `ComputerMenacePlayer` will work very much in the same way.
+
+The gist of MENACE is that it precomputes all possible games (up to symmetry), and for each game, it initially provides a certain number of beads for each possible move. When playing a game, MENACE finds the game corresponding to the current state and randomly selects one of the beads it has for that game. The more a given move has beads at that stage, the more likely it is to be selected. Once the game is finished, MENACE will update
+the number of beads for each of the moves used during that game, based on the outcome: if the game was lost, then the beads that were selected will be removed, making it less likely that similar moves will be selected in the future.
+
+This approach has as problem: it is possible to remove the last bead of a game this way, in which case Menace will be stuck if that game is seen again in the future, with no move having any chance of being selected. To avoid that, we only remove a bead if that is not the last one in that game.
+
+In summary:
+
+* If the game is a draw, then the beads are put back, and another similar bead is added each time increasing a little bit the chance of selecting that move in the future.
+
+* If the game is a win, then the bead is put back and 3 similar beads are added.
+
+* If the game is lost, the bead is not put back
+
+* Do not remove the last bead of a game.
+
+You are asked to provide an implementation of `ComputerMenacePlayer` and `MenaceGame` that behaves as expected. `MenanceGame` tracks all games (like PerfectGame), and also records the current number of beads of each possible move of each possible game.
+
+You are asked to provide an implementation of `ComputerMenacePlayer` that behaves as expected. You have to also implement `MenaceGame` which `ComputerMenacePlayer` instances use to precompute all possibly games and record the current number of beads for each possible move of each possible game.
+
+In the paper, it is assumed that MENACE always plays the first move (and our experiments actually suggest that MENACE learns much better how to be a first player than to be a second player). The main instance of MENACE in our system is also set to always play first (though you can easily change that in the code), but since we can play MENACE against MENACE, we need to have an implementation that can play both X and O. The paper specifies the initial number of beads for X only. We will use slightly different numbers for X (8,4,2,1 instead of 4,3,2,1) and we will use similar numbers for O. In other words, the initial number of beads are
+
+* First position (X): 8 beads
+* Second position (O): 8 beads
+* Third position (X): 4 beads
+* Fourth position (O): 4 beads
+* Fifth position (X): 2 beads
+* Sixth position (O): 2 beads
+* Seventh position (X): 1 bead
+* Eighth position (O): 1 bead
+* Ninth position (X): 1 bead
+
+The implementation of the system that we provide works as follow:
+
+1. Initially, a new instance of MENACE is created.
+
+2. That instance has not been trained and therefore is very weak. You can chose the opponent, which is either computer driven (random, perfect or MENACE), or a human (you).
+
+3. If you choose a computer driven opponent, then the system will automatically run 500 games between MENACE and that opponent, during which MENACE should improve its play (especially the first time). and should be then much tougher to beat.
+
+4. We also have included an option to reinitialize MENACE, so that you can easily restart a learning stage from scratch.
 
 
-Each grid now gives us up to 7 other different but symmetrical grids, shown Figure 5.
+## Training Your MENANCE Player
 
-![Figure 5: Square boards have 7 symmetrical equivalent boards.](figure05_non_square_symmetry.png)
-**Figure 5: Square boards have 7 symmetrical equivalent boards.**
-
-
-Here again, it is possible to iterate through all 8 different but symmetrical equivalent (square) grids, for ex- ample with the sequence rotation-rotation-rotation-horizontal symmetry-rotation-rotation-rotation, as illustrated Figure 6.
-
-![Figure 6: Enumerating all symmetrical square boards.](figure06_non_square_symmetry.png)
-**Figure 6: Enumerating all symmetrical square boards.**
-
-## Step 1: Create Transfomer.java
-
-From the discussion above, we see that implementing the horizontal symmetry, the vertical symmetry and the 90 degree (clockwise) rotation is enough to get every possibly symmetrical grid, for both square and non square grids.  We are going to create a new class Transformer to handle all-things-transformation.
-
-```java
-public class Transformer {
-
-}
-```
-
-### Add a Enumeration of rotation types
-
-We will want to add an enumeration of all possible rotations by creating a `enum` within our `Transformer` class.
-
-```java
-  /**
-   * An static enum  for the types of
-   * allowable transformations
-   */
-  public static enum Type {
-    UNKNOWN,
-    IDENTITY,
-    ROTATION,
-    VERTICAL_SYMMETRY,
-    HORIZONAL_SYMMETRY,
-  }
-```
-
-The `UNKNOWN` is useful for testing, and the `IDENTITY` does no rotation at all
-
-### Implement the transformations
-
-We are going to add five methods in Transformer.java to do this.  One of which is implemented below for your.
-
-This method uses the enum from above, and calls the underlying transformation.
-
-```java
-  /**
-   * Applies the transformation specified as parameter
-   * to board
-   *
-   * If the transformation was successful return true, if not return false;
-   */
-  public static boolean transform(Type transformation, int numRows, int numColumns, int[] board) {
-
-    switch(transformation) {
-    case IDENTITY:
-      return identity(numRows, numColumns, board);
-    case ROTATION:
-      return rotate90(numRows, numColumns, board);
-    case VERTICAL_SYMMETRY:
-      return verticalFlip(numRows, numColumns, board);
-    case HORIZONAL_SYMMETRY:
-      return horizontalFlip(numRows, numColumns, board);
-    default:
-      return false;
-    }
-  }
-```
-
-In keeping with our previous approach, the grids are going to be stored using a one dimensional array. For reasons that will become clear very soon, we will use an array of integers for our grid. Each of the methods will have three parameters: the number of rows and the number of columns of the grid, and a reference to the array of integers representing the grid. You need to implement the class methods in the class Transformer.java, that is:
-
-#### Identity
-
-```java
-public static boolean identity(int numRows, int numColumns, int[] board) {
-```
-
-Sets the board to the identity board where the value at each index is the index itself (in other words do a "no flip" flip).  Here we ignore the current values withiin the provided board and populate each index with its index value.
-
-For example, the identity board of a 3x3 game is
+Here is a sample run of the system.
 
 ```
- 0 | 1 | 2
-----------
- 3 | 4 | 5
-----------
- 6 | 7 | 8
+java GameMain
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
 ```
 
-#### Horizonal Flip
-
-```java
-public static void horizontalFlip(int numRows, int numRows, int[] board)
-```
-
-Performs a horizontal symmetry on the elements in the n (numRows) x m (numColumns) grid stored in the array reference by board. The elements in the array referenced by board are modified accordingly (see example below).
-
-If we consider a 3x3 board.
+And we will play Menace against a human ("1"):
 
 ```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
+1
 ```
 
-The updated horizontally flipped board would be
+And here is the result.
 
 ```
- 7 | 8 | 9
-----------
- 4 | 5 | 6
-----------
- 1 | 2 | 3
-```
+   | X |
+-----------
+   |   |
+-----------
+   |   |
 
-#### Vertical Flip
-
-```java
-public static void verticalFlip(int numRows, int numRows, int[] board)
-```
-
-Performs a vertical symmetry on the elements in the n (numRows) x m (numColumns) grid stored in the array reference by boardIndexes. The elements in the array referenced by boardIndexes are modified accordingly (see example below).
-
-If we consider a 3x3 board
-
-```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
-```
-
-The updated vertically flipped board would be
-
-```
- 3 | 2 | 1
-----------
- 6 | 5 | 4
-----------
- 9 | 8 | 7
-```
-
-#### Rotate 90 Degrees
-
-```java
-public static void rotate(int numRows, int numRows, int[] board);
-```
-
-Rotates clockwise by 90 degrees the elements in the n (numRows) x m (numColumns) grid stored in the array reference by boardIndexes. The elements in the array referenced by boardIndexes are modified accordingly (see example below).
-
-If we consider a 3x3 board
-
-```
- 1 | 2 | 3
-----------
- 4 | 5 | 6
-----------
- 7 | 8 | 9
-```
-
-The updated 90 rotated board would be
-
-```
- 7 | 4 | 1
- ----------
- 8 | 5 | 2
- ----------
- 9 | 6 | 3
-```
-
-Note that you can only rotate n x n boards.
-
-### Manually Testing Transformer
-
-All methods must check the provided inputs and handle all possible cases as required. The class Transformer.java comes with the following tests:
-
-```java
-  private static void test(int numRows, int numColumns) {
-    int[] test;
-    test = new int[numRows*numColumns];
-
-    System.out.println("testing " + numRows + " numRows and " + numColumns + " numColumns.");
-
-    identity(numRows, numColumns, test);
-    System.out.println(java.util.Arrays.toString(test));
-
-    horizontalFlip(numRows,numColumns,test);
-    System.out.println("HF => " + java.util.Arrays.toString(test));
-
-    horizontalFlip(numRows,numColumns,test);
-    System.out.println("HF => " + java.util.Arrays.toString(test));
-
-    verticalFlip(numRows,numColumns,test);
-    System.out.println("VF => " + java.util.Arrays.toString(test));
-
-    verticalFlip(numRows,numColumns,test);
-    System.out.println("VF => " + java.util.Arrays.toString(test));
-
-    for(int i = 0; i < 4; i++) {
-      boolean didTransform = rotate90(numRows,numColumns,test);
-      if (didTransform) {
-        System.out.println("ROT => " + java.util.Arrays.toString(test));
-      }
-    }
-  }
-
-  public static void main(String[] args) {
-    int[] test;
-    int numRows, numColumns;
-
-    test(2,2);
-    test(2,3);
-    test(3,3);
-    test(4,3);
-    test(4,4);
-  }
-```
-
-Running the test above should produce the following output:
-
-```java
-$ javac Transformer.java
-$ java Transformer
-```
-
-The output would look like
-
-```java
-testing 2 numRows and 2 numColumns.
-[0, 1, 2, 3]
-HF => [2, 3, 0, 1]
-HF => [0, 1, 2, 3]
-VF => [1, 0, 3, 2]
-VF => [0, 1, 2, 3]
-ROT => [2, 0, 3, 1]
-ROT => [3, 2, 1, 0]
-ROT => [1, 3, 0, 2]
-ROT => [0, 1, 2, 3]
-testing 2 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5]
-HF => [3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5]
-VF => [2, 1, 0, 5, 4, 3]
-VF => [0, 1, 2, 3, 4, 5]
-testing 3 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8]
-HF => [6, 7, 8, 3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-VF => [2, 1, 0, 5, 4, 3, 8, 7, 6]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-ROT => [6, 3, 0, 7, 4, 1, 8, 5, 2]
-ROT => [8, 7, 6, 5, 4, 3, 2, 1, 0]
-ROT => [2, 5, 8, 1, 4, 7, 0, 3, 6]
-ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8]
-testing 4 numRows and 3 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-HF => [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-VF => [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-testing 4 numRows and 4 numColumns.
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-HF => [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3]
-HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-VF => [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12]
-VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-ROT => [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
-ROT => [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-ROT => [3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12]
-ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-```
-
-## Step 2: Generating every non-symmetrical nxm games
-
-In assignment 2, we created a method that generates all the possible games for a given grid size. That method would only add a game to the list if the game was not equal to a game that was already there. Therefore, from that viewpoint, all we need to do is slightly update that method to only add a game it if not equal or symmetrical to a game that is already there.
-
-### Update equals to include symmetric boards
-
-Update the `equals` method of `TicTacToe` to also consider symmetrical games as equal.  Once updated, the `generateAllGames` in `TicTacToeEnumerations` will generate the list of lists we are looking for.
-
-If we consider a 3x3 board.
-
-```
+O to play: 1
+ O | X |
+-----------
  X |   |
-----------
+-----------
    |   |
-----------
-   |   |
+
+O to play: 5
+ O | X |
+-----------
+ X | O |
+-----------
+   |   | X
+
+O to play: 3
+ O | X | O
+-----------
+ X | O |
+-----------
+   | X | X
+
+O to play: 7
+
+Result: OWIN
+ O | X | O
+-----------
+ X | O |
+-----------
+ O | X | X
+
+Player 1 has won 0 games, lost 1 games, and 0 were draws.
+
+Player 2 has won 1 games, lost 0 games, and 0 were draws.
 ```
 
-It should be updated so that now considers the following symmetrical board also equal
+Let's play one more game.
+
+```
+1
+```
+
+And the output.
+
+```
+   |   |
+-----------
+   |   | X
+-----------
+   |   |
+
+O to play: 1
+ O |   | X
+-----------
+   |   | X
+-----------
+   |   |
+
+O to play: 9
+ O |   | X
+-----------
+   | X | X
+-----------
+   |   | O
+
+O to play: 4
+ O | X | X
+-----------
+ O | X | X
+-----------
+   |   | O
+
+O to play: 7
+
+Result: OWIN
+ O | X | X
+-----------
+ O | X | X
+-----------
+ O |   | O
+
+Player 1 has won 0 games, lost 2 games, and 0 were draws.
+
+Player 2 has won 2 games, lost 0 games, and 0 were draws.
+```
+
+
+As can be seen, so far MENACE is not really good and lost twice in a
+row despite being first player. Let’s now train it against a perfect player.
+
+
+```
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+2
+```
+
+The output is
+
+```
+About to train with 500 games.
+Player 1 has won 0 games, lost 182 games, and 318 were draws.
+Over the last 50 games, this player has won 0, lost 4, and tied 46.
+
+Player 2 has won 182 games, lost 0 games, and 318 were draws.
+Over the last 50 games, this player has won 4, lost 0, and tied 46.
+```
+
+MENACE (which is Player 1) has lost 182 games against the perfect player
+in the 500 that were played, and only 4 of the last 50 games.
+
+Let us try again as a human player against a trained MENACE.
+
+```
+   |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+O to play: 5
+   |   |
+-----------
+ X | O |
+-----------
+ X |   |
+
+O to play: 1
+ O |   |
+-----------
+ X | O |
+-----------
+ X |   | X
+
+O to play: 8
+ O | X |
+-----------
+ X | O |
+-----------
+ X | O | X
+
+O to play: 3
+
+Result: DRAW
+ O | X | O
+-----------
+ X | O | X
+-----------
+ X | O | X
+```
+
+Now, MENACE is a much better player, and plays indeed very well and got a draw. Note however that it is not perfect and can still be beaten.
+
+Look at this partial game:
 
 ```
    |   | X
-----------
+-----------
    |   |
-----------
+-----------
+   |   |
+
+O to play: 1
+ O |   | X
+-----------
+   | X |
+-----------
    |   |
 ```
 
-Read more to figure out how to make this change.
-
-
-### Indirection
-
-In order to update the `equals` in `TicTacToe`, we will have to loop through all the possible symmetrical games to see if we have a match. Of course, we could apply the symmetries on the board itself. We would apply transformations to the board until it either matches the board of the game we are comparing it with (in which case it is symmetrical) or we run out of symmetrical games (in which case it is not symmetrical).
-
-However, changing the board itself might have unwanted side effects. For example, imagine that we are printing the game to the user. What would happen is that since the board is modified through symmetrical equivalent games, the game presented to the used might be a dierent but symmetrical game every time, which would clearly not be good.
-
-Therefore, we are going to introduce a level of indirection to compute our symmetries.
-
-```java
-  /**
-   * The transformed board
-   * Initialized as the identity (board), i.e. no changes
-   * it will store the transformed index of each value
-   * in the underlying board
-   */
-  int[] boardIndexes;
-
-  /**
-   * What are all the allowable transformations of this board
-   * There are more transformations for square boards
-   */
-  int allowableIndex;
-  Transformer.Type[] allowable;
-```
-
-The board itself will remain unchanged, but we will use another array that will map the indexes of the board to their current symmetrical locations. We will use an instance variable, the array of integer `boardIndexes` to store the indirection.
-
-Initially, since there is no transformation, we always have `board[i]==board[boardIndexes[i]]` (the `identity` transformation). But after some symmetries have been applied to the game, `boardIndexes[i]` stores where the index i of the board is mapped to in the symmetry.
-
-
-### Iterating Through The Board
-
-To iterate through symmetric board we need a strategy. Each board has either four or eight symmetrical positions depending if it is square or not. We propose a convenient mechanism to iterate through all possible positions, using new instance methods
+Here we (Player 2) will make a terrible move (on purpose, I swear) and see how the MENACE player reacts.
 
 ```
-  /**
-   * Reset the board back to it's original position
-   */
-  public void reset() { ... }
-
-  /**
-   * Can we rotate the board anymore?
-   */
-  public boolean hasNext() { ... }
-
-  /**
-   * Rotate the board to based on the next allowable rotation
-   */
-  public boolean next() { ... }
+O to play: 4
+ O | X | X
+-----------
+ O | X |
+-----------
+   |   |
 ```
 
-* `hasNext()` returns true if and only if we have _more_ transformations available
-* `next()` will transform the board's `boardIndexes` to map to the next available rotation, it will return `true` if that was possible and `false` if there are no more iterations left.
-* `reset()` puts the `boardIndexes` back into the initial `identity` state
+We see that MENACE did not make the best move to win the game.  The MENACE player has
+not been trained at all to handle these "100% can win" scenarios like our perfect player
+would have played.  This illustrates some of the challenges in machine learning,
+but that is an entire different discussion!
 
-The following Java program illustrates the intended use for `next`, and `reset` (note that `hasNext` was not needed as next performs both checks).  The `toString` method has been updated to return the transformed version of the game.
 
-```java
-public class Test {
 
-  private static void printTest(TicTacToe g) {
-    System.out.println("PRINTING GAME");
-    g.reset();
-    while (g.next()) {
-      System.out.println(g.toString());
-      System.out.println("");
-    }
+## Implementation Details and Hints
 
-    System.out.println("reset:");
-    g.reset();
-    while (g.next()) {
-      System.out.println(g.toString());
-      System.out.println("");
-    }
-    System.out.println("DONE PRINTING GAME");
+You are responsible to implement
+
+* ComputerMenacePlayer.java
+* MenaceGame.java
+
+Here are a few things to help you debug along the way.
+
+### GameOutput
+
+From a player's spective, a game has an outcome  of WIN, DRAW,
+LOSE or UNKNOWN.
+
+```
+public enum GameOutcome {
+  WIN,
+  DRAW,
+  LOSE,
+  UNKNOWN;
+
+  public boolean isBetter(GameOutcome other) {
+    return this.compareTo(other) < 0;
   }
 
-  public static void main(String[] args) {
-    TicTacToe g;
-
-    System.out.println("Test on a 3x3 game");
-    g = new TicTacToe();
-    g.play(0);
-    g.play(2);
-    g.play(3);
-    printTest(g);
-
-    printTest(g);
-    System.out.println("Test on a 5x4 game");
-    g = new TicTacToe(4,5,3);
-    g.play(0);
-    g.play(2);
-    g.play(3);
-    printTest(g);
+  public boolean asGoodOrBetter(GameOutcome other) {
+    return this.compareTo(other) <= 0;
   }
 }
 ```
 
-The execution of the code above outputs
+This is useful when updating the number of beads in our MenaceGame.
+
+
+### Smaller Training Sets
+
+The `GameMain` has two extra (4th and 5th) parameters to help you debug.
+The fourth parameter will set the number of training matches between computer players
+(defaults to 500).
+
+For example:
 
 ```
-Test on a 3x3 game
-PRINTING GAME
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-reset:
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-DONE PRINTING GAME
-PRINTING GAME
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-reset:
-   | X | O
------------
-   |   |
------------
-   |   |
-
-   |   |
------------
-   |   | X
------------
-   |   | O
-
-   |   |
------------
-   |   |
------------
- O | X |
-
- O |   |
------------
- X |   |
------------
-   |   |
-
-   |   |
------------
- X |   |
------------
- O |   |
-
- O | X |
------------
-   |   |
------------
-   |   |
-
-   |   | O
------------
-   |   | X
------------
-   |   |
-
-   |   |
------------
-   |   |
------------
-   | X | O
-
-DONE PRINTING GAME
-Test on a 5x4 game
-PRINTING GAME
-   | X | O |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   | X | O |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   | O | X |
-
-   |   | O | X |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-reset:
-   | X | O |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   | X | O |   |
-
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   | O | X |
-
-   |   | O | X |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
--------------------
-   |   |   |   |
-
-DONE PRINTING GAME
+java GameMain 3 3 3 1
 ```
 
-We only need three transformations to identify symmetrical games
-
-* vertical symmetry (`VERTICAL_SYMMETRY`)
-* horizontal symmetry (`HORIZONAL_SYMMETRY`)
-* 90 degree rotation (`ROTATION`)
-
-We also need the ability to start (and reset) the game into its original state
-
-* identity transformation (`IDENTITY`)
-
-#### Update Transformer to determine the allowable transformations
-
-Update `Transformer` to return an array of `Transformer.Type`s based on the
-rules above in
+Will create our 3x3 (3 to win board), but training will now only be 1 game (not 500).
 
 ```
-public static Type[] symmetricTransformations(int numRows, int numColumns) {
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+2
+
+Result: OWIN
+   | X | X
+-----------
+ O | O | O
+-----------
+   | X |
+
+Player 1 has won 0 games, lost 1 games, and 0 were draws.
+
+Player 2 has won 1 games, lost 0 games, and 0 were draws.
 ```
 
-Following a call to the method `reset()`, each call to the method `next()` changes the orientation of the game according to the following list of operations:
+### Debug Flag
 
-##### Non-Square Boards
+The `GameMain`s fifths parameter sets a `isDebug` flag that you can use
+to conditionally output extra information.
 
-* IDENTITY
-* HORIZONAL_SYMMETRY
-* VERTICAL_SYMMETRY
-* HORIZONAL_SYMMETRY
+Here is how that flag is used in `ComputerPerfectPlayer`.
 
-##### Square Boards
+```
+java GameMain 3 3 3 1 true
+```
 
-* IDENTITY
-* ROTATION
-* ROTATION
-* ROTATION
-* HORIZONAL_SYMMETRY
-* ROTATION
-* ROTATION
-* ROTATION
+Let's play against the perfect player
 
+```
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+7
+```
 
-#### Update TicTacToe to support transformations
+We now see
 
-Add all the necessary instance variables to implement the methods:
+```
+Perfect player choosing based on:
+OVERALL: DRAW(5)
+ D 5 | D 5 | D 5
+-----------
+ D 5 | D 5 | D 5
+-----------
+ D 5 | D 5 | D 5
+```
 
-* `hasNext`,
-* `next`, and
-* `reset`
+Which highlights the `W`in, `L`ose or `D`raw scenarios before it chooses
 
-Update the `equals` method which returns true if and only if this instance of `TicTacToe` and `other` are identical including symmetrical boards using those methods above.
+```
+ X |   |
+-----------
+   |   |
+-----------
+   |   |
 
-The `TicTacToeEnumerations` class method `generateAllGames` is already
-implemented and uses the `equals` method to generate the list of games.
+O to play:
+```
 
-Here are few runs with the updated `equals` method
-
+Here is the snippet of code that enables that.
 
 ```java
-java EnumerationsMain
+if (isDebug) {
+  System.out.println("Perfect player choosing based on: ");
+  System.out.println(perfectGame);
+  System.out.println("");
+}
 ```
 
-Would output
-
-```bash
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 3 element(s) (3 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 38 element(s) (38 still playing)
-======= level 4 =======: 108 element(s) (108 still playing)
-======= level 5 =======: 174 element(s) (153 still playing)
-======= level 6 =======: 204 element(s) (183 still playing)
-======= level 7 =======: 153 element(s) (95 still playing)
-======= level 8 =======: 57 element(s) (34 still playing)
-======= level 9 =======: 15 element(s) (0 still playing)
-that's 765 games
-91 won by X
-44 won by O
-3 draw
-```
-
-Another example
-
-```java
-java EnumerationsMain 4 4 2
-```
-
-Would output
+Consider doing something similar in `ComputerMenancePlayer`, as shown below
 
 ```
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 3 element(s) (3 still playing)
-======= level 2 =======: 33 element(s) (33 still playing)
-======= level 3 =======: 219 element(s) (141 still playing)
-======= level 4 =======: 913 element(s) (587 still playing)
-======= level 5 =======: 3338 element(s) (883 still playing)
-======= level 6 =======: 4702 element(s) (1217 still playing)
-======= level 7 =======: 7048 element(s) (511 still playing)
-======= level 8 =======: 2724 element(s) (194 still playing)
-======= level 9 =======: 1119 element(s) (0 still playing)
-that's 20100 games
-10189 won by X
-6341 won by O
-0 draw
+(1) Menace against a human player
+(2) Train Menace against perfect player
+(3) Train Menace against random player
+(4) Train Menace against another menace
+(5) Delete (both) Menace training sets
+(6) Human to play perfect player
+(7) Perfect player to play human
+(8) Human against a menace player
+(Q)uit
+1
 ```
+
+The Menace player then shows the random number it rolled and the TicTacToe board showing
+the number of beads in each open position.
+
+```
+Menace rolled 9 on board:
+POSITION: 2 (Odds 31)
+ 8 | 8 | 4
+-----------
+ 4 | 2 | 2
+-----------
+ 1 | 1 | 1
+```
+
+So a working Menace implementation would play in position 2.
+
+```
+   | X |
+-----------
+   |   |
+-----------
+   |   |
+```
+
 
 ## Submission
 
@@ -828,8 +494,8 @@ Submission errors will affect your grades.
 Submit the following files.
 
 * STUDENT.md
-* TicTacToe.java
-* Transformer.java
+* ComputerMenacePlayer.java
+* MenaceGame.java
 
 This assignment can be done in groups of 2 +/- 1 person.  Ensure that `STUDENT.md` includes the names of all participants; only submit 1 solution per group.
 

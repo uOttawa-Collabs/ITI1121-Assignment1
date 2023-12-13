@@ -1,4 +1,4 @@
-public class HumanPlayer implements Player
+public class HumanPlayer extends Player
 {
     public boolean play(TicTacToe game)
     {
@@ -11,7 +11,7 @@ public class HumanPlayer implements Player
         while (nextPlayer == game.nextPlayer())
         {
             System.out.println(game.toString());
-            System.out.println("");
+            System.out.println();
             System.out.print(game.nextPlayer() + " to play: ");
             String message = game.play(Utils.readInt());
             if (message != null)

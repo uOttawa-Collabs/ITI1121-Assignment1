@@ -1,4 +1,4 @@
-public class ComputerInOrderPlayer implements Player
+public class ComputerInOrderPlayer extends Player
 {
     public boolean play(TicTacToe game)
     {
