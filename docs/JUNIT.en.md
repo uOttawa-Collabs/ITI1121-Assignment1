@@ -49,14 +49,14 @@ If you have NOT updated your CLASSPATH to point at the junit libraries, then:
 ### Under Windows
 
 ```
-javac -cp "junit-4.13.jar;hamcrest-core-1.3.jar;." TestL__LABNUM__.java
+javac -encoding UTF-8 -cp "junit-4.13.jar;hamcrest-core-1.3.jar;." TestL__LABNUM__.java
 java -cp "junit-4.13.jar;hamcrest-core-1.3.jar;." TestL__LABNUM__
 ```
 
 #### For Mac OSX/Linux/Unix:
 
 ```
-javac -cp junit-4.13.jar:hamcrest-core-1.3.jar:. TestL__LABNUM__.java
+javac -encoding UTF-8 -cp junit-4.13.jar:hamcrest-core-1.3.jar:. TestL__LABNUM__.java
 java -cp junit-4.13.jar:hamcrest-core-1.3.jar:. TestL__LABNUM__
 ```
 

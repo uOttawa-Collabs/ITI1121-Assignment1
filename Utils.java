@@ -17,4 +17,5 @@ public class Utils
         Scanner reader = new Scanner(System.in);
         return reader.nextInt();
     }
+
 }

@@ -1,588 +1,824 @@
 <center>
   <h1>ITI 1121. Introduction to Computing II</h1>
-  <h3>Assignment 2</h3>
-  <h3>Deadline: Jun 11, 2020 at 11pm</h3>
+  <h3>Assignment 3</h3>
+  <h3>Deadline: Jul 09, 2020 at 11pm</h3>
 </center>
 
 ## Learning objectives
 
-* Using Interfaces
-* Polymorphism
-* Experiment with Deep-Copy
-* Experiment with lists and enumerations
+* Iterating through different states
+* Using indirection
 
 ## Introduction
 
-In this assignment, we are continuing our work on the Tic-Tac-Toe game. In the previous assignment, we came up with a basic implementation of the game, that can be played by two humans. This time, we will first create a “computer player”, which isn't very smart at all but can at least play the game according to the rules. We will thus be able to play human against computer. We will then put this aside and work on enumerating all the possible games. That enumeration will be used later when we create a computer player which can play well.
+In the previous assignment, we allowed symmetric games to be processed. In this assignment, we will remove those symmetric games to make our search space smaller.
 
-## Human vs (Dumb) Machine
+## Symmetries and iterators
 
-A very simple way to have a program play Tic-Tac-Toe is to simply have the program pick the first empty cell to play at each turn. Of course, such an implementation should be easy to beat, but at least it can be played against.
+When we created our list of games in Q2 of assignment 2, we added a lot of solutions that were essentially identical, simply a symmetry of other games already listed.
 
-In order to design this solution, we want to introduce the concept of a **Player**. For now, we will have three kinds of players: the human player, and two dumb computer players. Later, we can introduce more types of players, e.g. a smart computer player, a perfect player etc. All of these are Players.
+Let’s looks at symmetries in a nxm grid. Let’s first assume that n 􏰀 m, that is, the grid is not square. In the case of a non-square grid, we have essentially two symmetries: vertical flip, and horizontal flip (Figure 1).
+
+![Figure 1: Non-square boards have 2 axes of symmetry.](figure01_non_square_symmetry.png)
+**Figure 1: Non-square boards have 2 axes of symmetry.**
+
+For each such non-square nxm grid, there are up to 3 different but symmetrical grids: the one obtain with a vertical symmetry, the one obtained with a horizontal symmetry, and the one obtain with a combination of both symmetries (Figure 2).
+
+![Figure 2: Non-square boards have up to 3 symmetrical equivalent grids.](figure02_non_square_symmetry.png)
+**Figure 2: Non-square boards have up to 3 symmetrical equivalent grids.**
+
+Something that will come in handy is that it is possible to iterate through all of these symmetries by repeatedly applying transformations, for example the series horizontal, then vertical, then horizontal symmetry will give you all four boards, as shown Figure 3.
+
+![Figure 3: Enumerating all non-square symmetrical boards.](figure03_non_square_symmetry.png)
+**Figure 3: Enumerating all non-square symmetrical boards.**
+
+Things are a little bit more complicated when the grid is square. In addition to horizontal and vertical symmetries, we have both diagonals, and well as rotation (Figure 4).
+
+![Figure 4: Square board have 4 axes of symmetry, and can be rotated 90 degrees as well](figure04_non_square_symmetry.png)
+**Figure 4: Square board have 4 axes of symmetry, and can be rotated 90 degrees as well**
 
 
-![Player Interface in UML](uml_player.png)
+Each grid now gives us up to 7 other different but symmetrical grids, shown Figure 5.
 
-**Figure 1: The interface Player and the two classes implementing it.**
+![Figure 5: Square boards have 7 symmetrical equivalent boards.](figure05_non_square_symmetry.png)
+**Figure 5: Square boards have 7 symmetrical equivalent boards.**
 
-What we gain from this **Players** abstraction is that it is possible to organize a match between two players, and have these two players play a series of games, keeping score for the match etc., without having to worry about the type of players involved. We can have human vs human, human vs dumb computer, smart vs dumb computer players, or any combination of players, this does not impact the way the game is played: we have two players, and they alternate playing a move on the game until the game is over. The requirement to be able to do this is that all **Player** implement the same method, say **play()**, which can be called when it is that player's turn to play.
 
-We can choose who plays whom, for example a human against a computer. The player who plays first, is initially chosen randomly. In subsequent games, the players alternate as first player. As usual, the first player plays X and the second player plays O so each player will alternate between playing playing X and playing O.
+Here again, it is possible to iterate through all 8 different but symmetrical equivalent (square) grids, for ex- ample with the sequence rotation-rotation-rotation-horizontal symmetry-rotation-rotation-rotation, as illustrated Figure 6.
 
-The following printout shows a typical game.
+![Figure 6: Enumerating all symmetrical square boards.](figure06_non_square_symmetry.png)
+**Figure 6: Enumerating all symmetrical square boards.**
 
+## Step 1: Create Transfomer.java
+
+From the discussion above, we see that implementing the horizontal symmetry, the vertical symmetry and the 90 degree (clockwise) rotation is enough to get every possibly symmetrical grid, for both square and non square grids.  We are going to create a new class Transformer to handle all-things-transformation.
+
+```java
+public class Transformer {
+
+}
+```
+
+### Add a Enumeration of rotation types
+
+We will want to add an enumeration of all possible rotations by creating a `enum` within our `Transformer` class.
+
+```java
+  /**
+   * An static enum  for the types of
+   * allowable transformations
+   */
+  public static enum Type {
+    UNKNOWN,
+    IDENTITY,
+    ROTATION,
+    VERTICAL_SYMMETRY,
+    HORIZONAL_SYMMETRY,
+  }
+```
+
+The `UNKNOWN` is useful for testing, and the `IDENTITY` does no rotation at all
+
+### Implement the transformations
+
+We are going to add five methods in Transformer.java to do this.  One of which is implemented below for your.
+
+This method uses the enum from above, and calls the underlying transformation.
+
+```java
+  /**
+   * Applies the transformation specified as parameter
+   * to board
+   *
+   * If the transformation was successful return true, if not return false;
+   */
+  public static boolean transform(Type transformation, int numRows, int numColumns, int[] board) {
+
+    switch(transformation) {
+    case IDENTITY:
+      return identity(numRows, numColumns, board);
+    case ROTATION:
+      return rotate90(numRows, numColumns, board);
+    case VERTICAL_SYMMETRY:
+      return verticalFlip(numRows, numColumns, board);
+    case HORIZONAL_SYMMETRY:
+      return horizontalFlip(numRows, numColumns, board);
+    default:
+      return false;
+    }
+  }
+```
+
+In keeping with our previous approach, the grids are going to be stored using a one dimensional array. For reasons that will become clear very soon, we will use an array of integers for our grid. Each of the methods will have three parameters: the number of rows and the number of columns of the grid, and a reference to the array of integers representing the grid. You need to implement the class methods in the class Transformer.java, that is:
+
+#### Identity
+
+```java
+public static boolean identity(int numRows, int numColumns, int[] board) {
+```
+
+Sets the board to the identity board where the value at each index is the index itself (in other words do a "no flip" flip).  Here we ignore the current values withiin the provided board and populate each index with its index value.
+
+For example, the identity board of a 3x3 game is
 
 ```
-$ java GameMain
-Player 2's turn.
-Player 1's turn.
+ 0 | 1 | 2
+----------
+ 3 | 4 | 5
+----------
+ 6 | 7 | 8
+```
 
+#### Horizonal Flip
+
+```java
+public static void horizontalFlip(int numRows, int numRows, int[] board)
+```
+
+Performs a horizontal symmetry on the elements in the n (numRows) x m (numColumns) grid stored in the array reference by board. The elements in the array referenced by board are modified accordingly (see example below).
+
+If we consider a 3x3 board.
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+The updated horizontally flipped board would be
+
+```
+ 7 | 8 | 9
+----------
+ 4 | 5 | 6
+----------
+ 1 | 2 | 3
+```
+
+#### Vertical Flip
+
+```java
+public static void verticalFlip(int numRows, int numRows, int[] board)
+```
+
+Performs a vertical symmetry on the elements in the n (numRows) x m (numColumns) grid stored in the array reference by boardIndexes. The elements in the array referenced by boardIndexes are modified accordingly (see example below).
+
+If we consider a 3x3 board
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+The updated vertically flipped board would be
+
+```
+ 3 | 2 | 1
+----------
+ 6 | 5 | 4
+----------
+ 9 | 8 | 7
+```
+
+#### Rotate 90 Degrees
+
+```java
+public static void rotate(int numRows, int numRows, int[] board);
+```
+
+Rotates clockwise by 90 degrees the elements in the n (numRows) x m (numColumns) grid stored in the array reference by boardIndexes. The elements in the array referenced by boardIndexes are modified accordingly (see example below).
+
+If we consider a 3x3 board
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+The updated 90 rotated board would be
+
+```
+ 7 | 4 | 1
+ ----------
+ 8 | 5 | 2
+ ----------
+ 9 | 6 | 3
+```
+
+Note that you can only rotate n x n boards.
+
+### Manually Testing Transformer
+
+All methods must check the provided inputs and handle all possible cases as required. The class Transformer.java comes with the following tests:
+
+```java
+  private static void test(int numRows, int numColumns) {
+    int[] test;
+    test = new int[numRows*numColumns];
+
+    System.out.println("testing " + numRows + " numRows and " + numColumns + " numColumns.");
+
+    identity(numRows, numColumns, test);
+    System.out.println(java.util.Arrays.toString(test));
+
+    horizontalFlip(numRows,numColumns,test);
+    System.out.println("HF => " + java.util.Arrays.toString(test));
+
+    horizontalFlip(numRows,numColumns,test);
+    System.out.println("HF => " + java.util.Arrays.toString(test));
+
+    verticalFlip(numRows,numColumns,test);
+    System.out.println("VF => " + java.util.Arrays.toString(test));
+
+    verticalFlip(numRows,numColumns,test);
+    System.out.println("VF => " + java.util.Arrays.toString(test));
+
+    for(int i = 0; i < 4; i++) {
+      boolean didTransform = rotate90(numRows,numColumns,test);
+      if (didTransform) {
+        System.out.println("ROT => " + java.util.Arrays.toString(test));
+      }
+    }
+  }
+
+  public static void main(String[] args) {
+    int[] test;
+    int numRows, numColumns;
+
+    test(2,2);
+    test(2,3);
+    test(3,3);
+    test(4,3);
+    test(4,4);
+  }
+```
+
+Running the test above should produce the following output:
+
+```java
+$ javac Transformer.java
+$ java Transformer
+```
+
+The output would look like
+
+```java
+testing 2 numRows and 2 numColumns.
+[0, 1, 2, 3]
+HF => [2, 3, 0, 1]
+HF => [0, 1, 2, 3]
+VF => [1, 0, 3, 2]
+VF => [0, 1, 2, 3]
+ROT => [2, 0, 3, 1]
+ROT => [3, 2, 1, 0]
+ROT => [1, 3, 0, 2]
+ROT => [0, 1, 2, 3]
+testing 2 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5]
+HF => [3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5]
+VF => [2, 1, 0, 5, 4, 3]
+VF => [0, 1, 2, 3, 4, 5]
+testing 3 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8]
+HF => [6, 7, 8, 3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+VF => [2, 1, 0, 5, 4, 3, 8, 7, 6]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+ROT => [6, 3, 0, 7, 4, 1, 8, 5, 2]
+ROT => [8, 7, 6, 5, 4, 3, 2, 1, 0]
+ROT => [2, 5, 8, 1, 4, 7, 0, 3, 6]
+ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+testing 4 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+HF => [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+VF => [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+testing 4 numRows and 4 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+HF => [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+VF => [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+ROT => [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
+ROT => [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+ROT => [3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12]
+ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+```
+
+## Step 2: Generating every non-symmetrical nxm games
+
+In assignment 2, we created a method that generates all the possible games for a given grid size. That method would only add a game to the list if the game was not equal to a game that was already there. Therefore, from that viewpoint, all we need to do is slightly update that method to only add a game it if not equal or symmetrical to a game that is already there.
+
+### Update equals to include symmetric boards
+
+Update the `equals` method of `TicTacToe` to also consider symmetrical games as equal.  Once updated, the `generateAllGames` in `TicTacToeEnumerations` will generate the list of lists we are looking for.
+
+If we consider a 3x3 board.
+
+```
  X |   |
------------
+----------
    |   |
------------
+----------
    |   |
-
-O to play:
 ```
 
-Here, player 2 (the computer) was selected to start for the first game.
-
-As can be seen, the computer player doesn't print out anything when it plays, it just makes its move silently. Then, it is player 1's turn (human). Following what we did in assignment 1, the HumanPlayer object first prints the game (here, we can see that the computer played cell 1, the first that was available) and then prompts the actual human (us, the user) for a move. Below, we see that the human has selected cell 2. The computer will then play (silently) and the human will be prompt again. It continues until the game finishes:
+It should be updated so that now considers the following symmetrical board also equal
 
 ```
-O to play: 2
-Player 2's turn.
-Player 1's turn.
-
- X | O | X
------------
+   |   | X
+----------
    |   |
------------
+----------
    |   |
-
-O to play:
 ```
 
-And then.
+Read more to figure out how to make this change.
 
-```
-O to play: 6
-Player 2's turn.
-Player 1's turn.
 
- X | O | X
------------
- X |   | O
------------
-   |   |
+### Indirection
 
-O to play:
-```
+In order to update the `equals` in `TicTacToe`, we will have to loop through all the possible symmetrical games to see if we have a match. Of course, we could apply the symmetries on the board itself. We would apply transformations to the board until it either matches the board of the game we are comparing it with (in which case it is symmetrical) or we run out of symmetrical games (in which case it is not symmetrical).
 
-And then.
+However, changing the board itself might have unwanted side effects. For example, imagine that we are printing the game to the user. What would happen is that since the board is modified through symmetrical equivalent games, the game presented to the used might be a dierent but symmetrical game every time, which would clearly not be good.
 
-```
-O to play: 7
-Player 2's turn.
-Player 1's turn.
+Therefore, we are going to introduce a level of indirection to compute our symmetries.
 
- X | O | X
------------
- X | X | O
------------
- O |   |
+```java
+  /**
+   * The transformed board
+   * Initialized as the identity (board), i.e. no changes
+   * it will store the transformed index of each value
+   * in the underlying board
+   */
+  int[] boardIndexes;
 
-O to play:
+  /**
+   * What are all the allowable transformations of this board
+   * There are more transformations for square boards
+   */
+  int allowableIndex;
+  Transformer.Type[] allowable;
 ```
 
-And then
+The board itself will remain unchanged, but we will use another array that will map the indexes of the board to their current symmetrical locations. We will use an instance variable, the array of integer `boardIndexes` to store the indirection.
+
+Initially, since there is no transformation, we always have `board[i]==board[boardIndexes[i]]` (the `identity` transformation). But after some symmetries have been applied to the game, `boardIndexes[i]` stores where the index i of the board is mapped to in the symmetry.
+
+
+### Iterating Through The Board
+
+To iterate through symmetric board we need a strategy. Each board has either four or eight symmetrical positions depending if it is square or not. We propose a convenient mechanism to iterate through all possible positions, using new instance methods
 
 ```
-O to play: 9
-Player 2's turn.
-Game over
+  /**
+   * Reset the board back to it's original position
+   */
+  public void reset() { ... }
 
- X | O | X
------------
- X | X | O
------------
- O | X | O
+  /**
+   * Can we rotate the board anymore?
+   */
+  public boolean hasNext() { ... }
 
-Result: DRAW
-Play again (y)?:
+  /**
+   * Rotate the board to based on the next allowable rotation
+   */
+  public boolean next() { ... }
 ```
 
-This game finishes with a DRAW. The sentence "Game over" is printed after the last move (made by the computer in this case), then the final board is printed, and the outcome of the game ("Result: DRAW").
+* `hasNext()` returns true if and only if we have _more_ transformations available
+* `next()` will transform the board's `boardIndexes` to map to the next available rotation, it will return `true` if that was possible and `false` if there are no more iterations left.
+* `reset()` puts the `boardIndexes` back into the initial `identity` state
 
-The user is then asked if they want to play again.
+The following Java program illustrates the intended use for `next`, and `reset` (note that `hasNext` was not needed as next performs both checks).  The `toString` method has been updated to return the transformed version of the game.
 
-Here, we want to play another game. This time, the human will make the first move. Below, you can see the entire game, which is a human win. Then a third game is played, also a human win, and we stop playing after this.
+```java
+public class Test {
+
+  private static void printTest(TicTacToe g) {
+    System.out.println("PRINTING GAME");
+    g.reset();
+    while (g.next()) {
+      System.out.println(g.toString());
+      System.out.println("");
+    }
+
+    System.out.println("reset:");
+    g.reset();
+    while (g.next()) {
+      System.out.println(g.toString());
+      System.out.println("");
+    }
+    System.out.println("DONE PRINTING GAME");
+  }
+
+  public static void main(String[] args) {
+    TicTacToe g;
+
+    System.out.println("Test on a 3x3 game");
+    g = new TicTacToe();
+    g.play(0);
+    g.play(2);
+    g.play(3);
+    printTest(g);
+
+    printTest(g);
+    System.out.println("Test on a 5x4 game");
+    g = new TicTacToe(4,5,3);
+    g.play(0);
+    g.play(2);
+    g.play(3);
+    printTest(g);
+  }
+}
+```
+
+The execution of the code above outputs
 
 ```
-Play again (y)?: y
-Player 1's turn.
-
-   |   |
+Test on a 3x3 game
+PRINTING GAME
+   | X | O
 -----------
    |   |
 -----------
    |   |
 
-X to play: 1
-
-Player 2's turn.
-Player 1's turn.
-
- X | O |
------------
    |   |
 -----------
-   |   |
-
-X to play: 4
-
-Player 2's turn.
-Player 1's turn.
-
- X | O | O
------------
- X |   |
------------
-   |   |
-
-X to play: 7
-Game over
-
- X | O | O
------------
- X |   |
------------
- X |   |
-
-Result: XWIN
-Play again (y)?: y
-
-Player 2's turn.
-Player 1's turn.
-
- X |   |
------------
-   |   |
------------
-   |   |
-
-O to play: 3
-
-Player 2's turn.
-Player 1's turn.
-
- X | X | O
------------
-   |   |
------------
-   |   |
-
-O to play: 6
-
-Player 2's turn.
-Player 1's turn.
-
- X | X | O
------------
- X |   | O
------------
-   |   |
-
-O to play: 9
-Game over
-
- X | X | O
------------
- X |   | O
+   |   | X
 -----------
    |   | O
 
-Result: OWIN
-Play again (y)?: n
-```
-
-We are now ready to program our solution. We will reuse the implementation of the class TicTacToe from assignment 1 with a few small tweaks.
-
-
-### Player
-
-_Player_ is an interface. It defines only one method, the method play. Play is returns a boolean (did the player succeed in playing) and has one input parameter, a reference to a TicTacToe game.
-
-### HumanPlayer
-
-_HumanPlayer_ is a class which implements the interface Player. In its implementation of the method play, it first checks that the game is indeed playable (and returns false if it isn't), and then prompts the user for a valid input (similar to that from Assignment 1). Once an input has been provided, it plays in on the board and returns true.
-
-### ComputerInOrderPlayer
-
-_ComputerInOrderPlayer_ is a class which also implements the interface _Player_. In its implementation of the method play, it first checks that the game is playable (and returns false if it isn't), and then chooses the first available cell.
-
-## ComputerRandomPlayer
-
-Let us make a slightly smarter, but still dumb computer player.
-
-_ComputerRandomPlayer_ is a class which also implements the interface _Player_. In its implementation of the method play, it first checks that the game is indeed playable (and returns false if it isn't), and then chooses randomly the next move and plays it on the game and returns. All the possible next moves have an equal chance of being played.
-
-### GameMain
-
-This class implements playing the game. You are provided with the initial part, but you will need to complete it. The entire game is played in the main method. A local variable **players**, a reference to an array of two players, is used to store the human and the computer player. You **must** use that array to store your **Player** references.
-
-You need to finish the implementation of the main to obtain the specified behaviour. You need to ensure that the first player is initially chosen randomly, and that the first move alternate between both players in subsequent games.
-
-Below is another sample run, this time on a 4x4 grid with a win length of 2. The human players makes a series of input mistakes along the way.
-
-We have two additional arguments than we had from Assignment #1,  "player1" and "player2" which can be one of
-
-* "h" for the human player
-* "ic" for the in order computer player
-* "rc" for the random computer player
-
-```
-$ java GameMain h ic 4 4 2
-Player 1's turn.
-
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-X to play: 2
-Player 2's turn.
-Player 1's turn.
-
- O | X |   |
----------------
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-X to play: 99
-The value should be between 1 and 16
-
-X to play: 2
-Cell 2 has already been played with X
-
-X to play: 6
-Game over
-
- O | X |   |
----------------
-   | X |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-Result: XWIN
-Play again (Y)?:n
-```
-
-
-## TicTacToe Enumerations
-
-We are now looking at something else: game enumerations. We would like to generate all the possible games for a given size of grid and win size.
-
-For example, if we take the default, 3x3 grid, there is 1 grid at level 0, namely:
-
-```
    |   |
 -----------
    |   |
 -----------
-   |   |
-```
+ O | X |
 
-At level 1, there are 9 grids, namely:
-
-```
- X |   |
------------
-   |   |
------------
-   |   |
-```
-
-```
-   | X |
------------
-   |   |
------------
-   |   |
-```
-
-```
-   |   | X
------------
-   |   |
------------
-   |   |
-```
-
-```
-   |   |
+ O |   |
 -----------
  X |   |
 -----------
    |   |
-```
 
-```
    |   |
------------
-   | X |
------------
-   |   |
-```
-
-```
-   |   |
------------
-   |   | X
------------
-   |   |
-```
-
-```
-   |   |
------------
-   |   |
------------
- X |   |
-```
-
-```
-   |   |
------------
-   |   |
------------
-   | X |
-```
-
-```
-   |   |
------------
-   |   |
------------
-   |   | X
-```
-
-There are then 72 grids at level 2, too many to print here. In Appendix A, we provide the complete list of games for a 2x2 grid, with a win size of 2. Note that no game of level 4 appears on that list: it is simply impossible to reach level 3 and not win on a 2x2 grid with a win size of 2. In our enumeration, we do not list the same game twice, and we do not continue after a game has been won.
-
-### Our Implementation
-
-For this implementation, we are going to add a couple of new methods to our class **TicTacToe** and we will create a new class, **TicTacToeEnumerations**, to generate our games. We will store our games in a list of lists. We will have our own implementation of the abstract data type List very soon, but we do not have it yet. Therefore, exceptionally for ITI1X21, we are going to use a ready-to-use solution. In this case, we will use java.util.LinkedList. The documentation is available at https://docs.oracle.com/javase/9/docs/api/java/util/LinkedList.html.
-
-The goal is to create a list of lists: each list will have all the different games for a given level. Consider again the default, 3x3 grid. Our list will have 10 elements.
-
-* The first element is the list of 3x3 grid at level 0. There is 1 such grid, so this list has 1 element.
-* The second element is the list of 3x3 grid at level 1. There are 9 such grids, so this list has 9 elements.
-* The third element is the list of 3x3 grid at level 2. There are 72 such grids, so this list has 72 elements.
-* The fourth element is the list of 3x3 grid at level 3. There are 252 such grids, so this list has 252 elements.
-* The fifth element is the list of 3x3 grid at level 4. There are 756 such grids, so this list has 756 elements.
-
-...
-
-* The ninth element is the list of 3x3 grid at level 8. There are 390 such grids, so this list has 390 elements.
-* The tenth element is the list of 3x3 grid at level 9. There are 78 such grids, so this list has 78 elements.
-
-The class **EnumerationsMain.java** is provided to you. Here are a few typical runs:
-
-```
-$ java EnumerationsMain
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 9 element(s) (9 still playing)
-======= level 2 =======: 72 element(s) (72 still playing)
-======= level 3 =======: 252 element(s) (252 still playing)
-======= level 4 =======: 756 element(s) (756 still playing)
-======= level 5 =======: 1260 element(s) (1140 still playing)
-======= level 6 =======: 1520 element(s) (1372 still playing)
-======= level 7 =======: 1140 element(s) (696 still playing)
-======= level 8 =======: 390 element(s) (222 still playing)
-======= level 9 =======: 78 element(s) (0 still playing)
-that's 5478 games
-564 won by X
-316 won by O
-78 draw
-```
-
-We can specify the grid size and the number of in a row to win
-
-```
-$ java EnumerationsMain 3 3 2
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 9 element(s) (9 still playing)
-======= level 2 =======: 72 element(s) (72 still playing)
-======= level 3 =======: 252 element(s) (112 still playing)
-======= level 4 =======: 336 element(s) (136 still playing)
-======= level 5 =======: 436 element(s) (40 still playing)
-======= level 6 =======: 116 element(s) (4 still playing)
-======= level 7 =======: 12 element(s) (0 still playing)
-that's 1234 games
-548 won by X
-312 won by O
-0 draw
-```
-
-Here is a small 2x2 grid.
-
-```
-$ java EnumerationsMain 2 2 2
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 4 element(s) (4 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 12 element(s) (0 still playing)
-that's 29 games
-12 won by X
-0 won by O
-0 draw
-```
-
-Here is an _impossible to win_ 2x2 grid.
-
-```
-$ java EnumerationsMain 2 2 3
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 4 element(s) (4 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 12 element(s) (12 still playing)
-======= level 4 =======: 6 element(s) (0 still playing)
-that's 35 games
-0 won by X
-0 won by O
-6 draw
-```
-
-Here is a larger 5x2 board.
-
-```
-$ java EnumerationsMain 5 2 3
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 10 element(s) (10 still playing)
-======= level 2 =======: 90 element(s) (90 still playing)
-======= level 3 =======: 360 element(s) (360 still playing)
-======= level 4 =======: 1260 element(s) (1260 still playing)
-======= level 5 =======: 2520 element(s) (2394 still playing)
-======= level 6 =======: 3990 element(s) (3798 still playing)
-======= level 7 =======: 3990 element(s) (3290 still playing)
-======= level 8 =======: 2580 element(s) (2162 still playing)
-======= level 9 =======: 1032 element(s) (646 still playing)
-======= level 10 =======: 150 element(s) (0 still playing)
-that's 15983 games
-1212 won by X
-610 won by O
-150 draw
-```
-
-### TicTacToe Changes
-
-We need to add three new public methods to the class TicTacToe:
-
-#### cloneNextPlay
-
-```java
-public TicTacToe cloneNextPlay(int nextMove)
-```
-
-The `cloneNextPlay` is used to create a new instance of the class `TicTacToe`, based on the current instance (aka `this`). The new instance will copy (also known as clone) the current state of the game, and will then apply the `nextMove`. For example, imagine the following game:
-
-```
- O |   | X
------------
- X |   |
------------
-   |   |
-```
-
-A call to
-
-```java
-game.cloneNextPlay(7);
-```
-
-Returns a new game as follows:
-
-```
- O |   | X
 -----------
  X |   |
 -----------
  O |   |
-```
 
-One important consideration in implementing this method is that the underlying game should not be modified by the call. Have a look at Appendix B to better understand what is required to achieve this.
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
 
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
 
-#### equals
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
 
-```java
-public boolean equals(Object obj)
-```
+reset:
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
 
-The `equals` compares the current game with the game referenced by other object. This method returns true if and only if both games are considered the same: they have the same characteristics, and their board is in the same state.
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
 
-#### emptyPositions
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
 
-The `emptyPositions` returns an array of positions that are empty and available to be played on. The results are 1-based (not zero).
-
-For example, imagine the following game:
-
-```
- O |   | X
+ O |   |
 -----------
  X |   |
 -----------
    |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+DONE PRINTING GAME
+PRINTING GAME
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
+
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
+
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
+
+ O |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+reset:
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
+
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
+
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
+
+ O |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+DONE PRINTING GAME
+Test on a 5x4 game
+PRINTING GAME
+   | X | O |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   | X | O |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   | O | X |
+
+   |   | O | X |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+reset:
+   | X | O |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   | X | O |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   | O | X |
+
+   |   | O | X |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+DONE PRINTING GAME
 ```
 
-A call to
+We only need three transformations to identify symmetrical games
+
+* vertical symmetry (`VERTICAL_SYMMETRY`)
+* horizontal symmetry (`HORIZONAL_SYMMETRY`)
+* 90 degree rotation (`ROTATION`)
+
+We also need the ability to start (and reset) the game into its original state
+
+* identity transformation (`IDENTITY`)
+
+#### Update Transformer to determine the allowable transformations
+
+Update `Transformer` to return an array of `Transformer.Type`s based on the
+rules above in
+
+```
+public static Type[] symmetricTransformations(int numRows, int numColumns) {
+```
+
+Following a call to the method `reset()`, each call to the method `next()` changes the orientation of the game according to the following list of operations:
+
+##### Non-Square Boards
+
+* IDENTITY
+* HORIZONAL_SYMMETRY
+* VERTICAL_SYMMETRY
+* HORIZONAL_SYMMETRY
+
+##### Square Boards
+
+* IDENTITY
+* ROTATION
+* ROTATION
+* ROTATION
+* HORIZONAL_SYMMETRY
+* ROTATION
+* ROTATION
+* ROTATION
+
+
+#### Update TicTacToe to support transformations
+
+Add all the necessary instance variables to implement the methods:
+
+* `hasNext`,
+* `next`, and
+* `reset`
+
+Update the `equals` method which returns true if and only if this instance of `TicTacToe` and `other` are identical including symmetrical boards using those methods above.
+
+The `TicTacToeEnumerations` class method `generateAllGames` is already
+implemented and uses the `equals` method to generate the list of games.
+
+Here are few runs with the updated `equals` method
+
 
 ```java
-game.emptyPositions();
+java EnumerationsMain
 ```
 
-Returns
+Would output
+
+```bash
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 3 element(s) (3 still playing)
+======= level 2 =======: 12 element(s) (12 still playing)
+======= level 3 =======: 38 element(s) (38 still playing)
+======= level 4 =======: 108 element(s) (108 still playing)
+======= level 5 =======: 174 element(s) (153 still playing)
+======= level 6 =======: 204 element(s) (183 still playing)
+======= level 7 =======: 153 element(s) (95 still playing)
+======= level 8 =======: 57 element(s) (34 still playing)
+======= level 9 =======: 15 element(s) (0 still playing)
+that's 765 games
+91 won by X
+44 won by O
+3 draw
+```
+
+Another example
 
 ```java
-[2, 5, 6, 7, 8, 9]
+java EnumerationsMain 4 4 2
 ```
 
-### TicTacToeEnumerations
+Would output
 
-This new class computes has a constructor the same as `TicTacToe`
-
-```java
-public TicTacToeEnumerations(int aNumRows, int aNumColumns, int aSizeToWin)
 ```
-
-And then implement the method `generateAllGames` to generate the list of lists of games.
-
-```java
-public LinkedList<LinkedList<TicTacToe>> generateAllGames()
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 3 element(s) (3 still playing)
+======= level 2 =======: 33 element(s) (33 still playing)
+======= level 3 =======: 219 element(s) (141 still playing)
+======= level 4 =======: 913 element(s) (587 still playing)
+======= level 5 =======: 3338 element(s) (883 still playing)
+======= level 6 =======: 4702 element(s) (1217 still playing)
+======= level 7 =======: 7048 element(s) (511 still playing)
+======= level 8 =======: 2724 element(s) (194 still playing)
+======= level 9 =======: 1119 element(s) (0 still playing)
+that's 20100 games
+10189 won by X
+6341 won by O
+0 draw
 ```
-
-This method returns the (Linked) list of (Linked) lists of TicTacToe references that we are looking for, for the games on a grid `numRows` x `numColumns` with a particular `sizeToWin`. As explained, each of the (secondary) lists contains the lists of references to the game of the same level. There are three important factors to take into account when building the list:
-
-* We only build games up to their winning point (or until they reach a draw). We never extend a game that is already won.
-* We do not duplicate games. There are several ways to reach the same state, so make sure that the same game is not listed several times.
-* We do not include empty lists. As can be seen in A, we stop our enumeration once all the games are finished. In the 2x2 case with a win size of 2, since all the games are finished after 3 moves, the list of lists has only 4 elements: games after 0 move, games after 1 move, games after 2 moves and games after 3 moves.
-
-## JUnit
-
-We provide a set of JUnit tests. These tests should help ensure that your implementation is correct. They can also help clarify the expected behavior of this class.
-
-Please read the [junit instructions](JUNIT.en.md) for help with running the tests.
-
 
 ## Submission
 
@@ -592,20 +828,8 @@ Submission errors will affect your grades.
 Submit the following files.
 
 * STUDENT.md
-* ComputerInOrderPlayer.java
-* ComputerRandomPlayer.java
-* GameMain.java
-* HumanPlayer.java
 * TicTacToe.java
-* TicTacToeEnumerations.java
-
-Submit the following files, but they should not be changed.
-
-* CellValue.java
-* EnumerationsMain.java
-* GameState.java
-* Player.java
-* Utils.java
+* Transformer.java
 
 This assignment can be done in groups of 2 +/- 1 person.  Ensure that `STUDENT.md` includes the names of all participants; only submit 1 solution per group.
 
@@ -624,155 +848,3 @@ Cases of plagiarism will be dealt with according to the university regulations. 
 4. I did not collaborate with any other person, with the exception of my partner in the case of team work.
 
 * If you did collaborate with others or obtained source code from the Web, then please list the names of your collaborators or the source of the information, as well as the nature of the collaboration. Put this information in the submitted README.txt file. Marks will be deducted proportional to the level of help provided (from 0 to 100%).
-
-## Appendix A: Enumerating all games of a 2x2 grid
-
-```
-======= level 0 =======: 1 element(s)
-   |
--------
-   |
-```
-
-```
-======= level 1 =======: 4 element(s)
- X |
--------
-   |
-
-   | X
--------
-   |
-
-   |
--------
- X |
-
-   |
--------
-   | X
-```
-
-```
-======= level 2 =======: 12 element(s)
-
- X | O
--------
-   |
-
- X |
--------
- O |
-
- X |
--------
-   | O
-
- O | X
--------
-   |
-
-   | X
--------
- O |
-
-   | X
--------
-   | O
-
- O |
--------
- X |
-
-   | O
--------
- X |
-
-   |
--------
- X | O
-
- O |
--------
-   | X
-
-   | O
--------
-   | X
-
-   |
--------
- O | X
-```
-
-```
-======= level 3 =======: 12 element(s)
-
- X | O
--------
- X |
-
- X | O
--------
-   | X
-
- X | X
--------
- O |
-
- X |
--------
- O | X
-
- X | X
--------
-   | O
-
- X |
--------
- X | O
-
- O | X
--------
- X |
-
- O | X
--------
-   | X
-
-   | X
--------
- O | X
-
-   | X
--------
- X | O
-
- O |
--------
- X | X
-
-   | O
--------
- X | X
-```
-
-## Appendix B: Shallow copy versus Deep copy
-
-As you know, objects have variables which are either a primitive type, or a reference type. Primitive variables hold a value from one of the language primitive type, while reference variables hold a reference (the address) of another object (including arrays, which are objects in Java).
-
-If you are copying the current state of an object, in order to obtain a duplicate object, you will create a copy of each of the variables. By doing so, the value of each instance primitive variable will be duplicated (thus, modifying one of these values in one of the copy will not modify the value on the other copy). However, with reference variables, what will be copied is the actual reference, the address of the object that this variable is pointing at. Consequently, the reference variables in both the original object and the duplicated object will point at the same address, and the reference variables will refer to the same objects. This is known as a shallow copy: you indeed have two objects, but they share all the objects pointed at by their instance reference variables. The Figure B provides an example: the object referenced by variable b is a shallow copy of the object referenced by variable a: it has its own copies of the instances variables, but the references variables title and time are referencing the same objects.
-
-Often, a shallow copy is not adequate: what is required is a so-called deep copy. A deep copy differs from a shallow copy in that objects referenced by reference variable must also be recursively duplicated, in such a way that when the initial object is (deep) copied, the copy does not share any reference with the initial object. The Figure B provides an example: this time, the object referenced by variable b is a deep copy of the object referenced by variable a: now, the references variables title and time are referencing different objects. Note that, in turn, the objects referenced by the variable time have also been deep-copied. The entire set of objects reachable from a have been duplicated.
-
-![Shallow Copy](shallow_copy.png)
-
-**Figure 2: A example of a shallow copy of objects.**
-
-![Deep Copy](deep_copy.png)
-
-**Figure 3: A example of a deep copy of objects.**
-
-You can read more about shallow versus deep copy on Wikipedia:
-
-https://en.wikipedia.org/wiki/Object_copying

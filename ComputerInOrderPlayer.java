@@ -2,16 +2,22 @@ public class ComputerInOrderPlayer implements Player
 {
     public boolean play(TicTacToe game)
     {
-        int[] empties = game.emptyPositions();
-
-        if (empties.length != 0)
+        int nextPosition = 0;
+        while (true)
         {
-            game.play(empties[0]);
-            return true;
+            nextPosition += 1;
+            CellValue v = game.valueAt(nextPosition);
+            if (v == CellValue.INVALID)
+            {
+                return false;
+            }
+            else if (v == CellValue.EMPTY)
+            {
+                break;
+            }
         }
-        else
-        {
-            return false;
-        }
+        game.play(nextPosition);
+        return true;
     }
+
 }

@@ -3,10 +3,10 @@ public class GameMain
     /**
      * <b>main</b> of the application. Creates the instance of  TicTacToe
      * and starts the game. If two parameters lines  and columns
-     * are passed, they are used. If the parameters lines, columns
+     * are passed, they are used. If the paramters lines, columns
      * and win are passed, they are used.
      * Otherwise, a default value is used. Defaults values (3) are also
-     * used if the parameters are too small (less than 2).
+     * used if the paramters are too small (less than 2).
      * Here, we assume that the command lines arguments are indeed integers
      *
      * @param args command lines parameters
@@ -26,41 +26,28 @@ public class GameMain
         }
 
         TicTacToe game;
-        Player[]  players = new Player[] {p1, p2};
+        Player[]  players        = new Player[] {p1, p2};
+        int       startingPlayer = Utils.generator.nextInt(2);
+        boolean   keepPlaying    = true;
 
-        game = new TicTacToe(lines, columns, wins);
-        int currentPlayer = Utils.generator.nextInt(2);
-        ;
-
-        boolean isPlayValid;
-        boolean wouldNotPlayAgain;
-        do
+        while (keepPlaying)
         {
+            game = new TicTacToe(lines, columns, wins);
+            int whosTurn = startingPlayer;
             while (game.gameState == GameState.PLAYING)
             {
-                System.out.println("Player " + (currentPlayer + 1) + "'s turn.");
-                do
-                {
-                    isPlayValid = players[currentPlayer].play(game);
-                }
-                while (!isPlayValid);
-                currentPlayer = nextPlayer(currentPlayer);
+                System.out.println("Player " + (whosTurn + 1) + "'s turn.");
+                players[whosTurn].play(game);
+                whosTurn = nextPlayer(whosTurn);
             }
-            System.out.println("Game over" + Utils.NEW_LINE);
-            System.out.println(game.toString() + Utils.NEW_LINE);
-            System.out.println("Result: " + game.gameState.toString());
-            System.out.print("Play again (Y)?:");
-            try
-            {
-                wouldNotPlayAgain = Utils.readLine().trim().toUpperCase().charAt(0) == 'N';
-            }
-            catch (Exception e)
-            {
-                wouldNotPlayAgain = false;
-                game              = new TicTacToe(lines, columns, wins);
-            }
+            System.out.println("Game over");
+            System.out.println(game);
+            System.out.println("Result: " + game.gameState);
+            System.out.print("Play again (y)?:");
+            System.out.println("");
+            keepPlaying    = Utils.readLine().toLowerCase().equals("y");
+            startingPlayer = nextPlayer(startingPlayer);
         }
-        while (!wouldNotPlayAgain);
     }
 
     /**
@@ -136,4 +123,5 @@ public class GameMain
         }
         return 3;
     }
+
 }

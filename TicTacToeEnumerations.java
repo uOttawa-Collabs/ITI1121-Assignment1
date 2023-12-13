@@ -2,12 +2,16 @@ import java.util.LinkedList;
 
 public class TicTacToeEnumerations
 {
-    // YOUR CODE HERE
-    int numRows, numColumns, sizeToWin;
+    /**
+     * The template game to analyze
+     */
+    TicTacToe template;
+
     /**
      * The list of lists of all generated games
      */
     LinkedList<LinkedList<TicTacToe>> allGames;
+
 
     /**
      * A constructor where you can specify the dimensions
@@ -20,64 +24,28 @@ public class TicTacToeEnumerations
      */
     public TicTacToeEnumerations(int aNumRows, int aNumColumns, int aSizeToWin)
     {
-        numRows    = aNumRows;
-        numColumns = aNumColumns;
-        sizeToWin  = aSizeToWin;
+        template = new TicTacToe(aNumRows, aNumColumns, aSizeToWin);
     }
 
-    /**
-     * Generate a list of lists of all games, storing the
-     * result in the member variables `allGames`.
-     */
     public LinkedList<LinkedList<TicTacToe>> generateAllGames()
     {
+
         allGames = new LinkedList<LinkedList<TicTacToe>>();
-        allGames.add(new LinkedList<TicTacToe>());
-        allGames.getFirst().add(new TicTacToe(numRows, numColumns, sizeToWin)); // For level 0, always has an empty board.
+        addToGames(template);
 
-        LinkedList<TicTacToe> currentLevel = allGames.getFirst();
-        for (int i = 0; i < numRows * numColumns; i++)
+        LinkedList<TicTacToe> workingGames = new LinkedList<TicTacToe>();
+        workingGames.add(template);
+
+        while (!workingGames.isEmpty())
         {
-            LinkedList<TicTacToe> previousLevel = currentLevel;
-            currentLevel = new LinkedList<TicTacToe>();
-            allGames.add(currentLevel);
-
-            boolean isLevelEmptyFlag = true;
-            //for (int s = 0; s < previousLevel.size(); s++)
-            for (TicTacToe previousLevelGame : previousLevel)
+            TicTacToe game = workingGames.pop();
+            for (int nextMove : game.emptyPositions())
             {
-                // s represents the index of game elements in the previous level.
-                if (previousLevelGame.gameState == GameState.PLAYING)
+                TicTacToe nextGame = game.cloneNextPlay(nextMove);
+                if (addToGames(nextGame) && nextGame.gameState == GameState.PLAYING)
                 {
-                    int[] empties = previousLevelGame.emptyPositions();
-
-                    for (int nextStep : empties)
-                    {
-                        TicTacToe newGame = previousLevelGame.cloneNextPlay(nextStep);
-
-                        boolean isNewFlag = true;
-                        for (TicTacToe existingGames: currentLevel)
-                        {
-                            if (newGame.equals(existingGames))
-                            {
-                                isNewFlag = false;
-                                break;
-                            }
-                        }
-
-                        if (isNewFlag)
-                        {
-                            currentLevel.add(newGame);
-                            isLevelEmptyFlag = false;
-                        }
-                    }
+                    workingGames.add(nextGame);
                 }
-            }
-
-            if (isLevelEmptyFlag)
-            {
-                allGames.removeLast();
-                break;
             }
         }
 
@@ -131,4 +99,27 @@ public class TicTacToeEnumerations
         s.append(numDraw + " draw");
         return s.toString();
     }
+
+    /**
+     * Add the game to our all games list
+     * make sure the position exists, and then add it
+     */
+    private boolean addToGames(TicTacToe game)
+    {
+        int index = game.numRounds;
+        int size  = game.numRounds + 1;
+        while (allGames.size() < size)
+        {
+            allGames.add(new LinkedList<TicTacToe>());
+        }
+
+        LinkedList<TicTacToe> l         = allGames.get(index);
+        boolean               isNewGame = !l.contains(game);
+        if (isNewGame)
+        {
+            l.add(game);
+        }
+        return isNewGame;
+    }
+
 }

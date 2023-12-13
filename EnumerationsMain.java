@@ -9,6 +9,7 @@ public class EnumerationsMain
      */
     public static void main(String[] args)
     {
+
         int numRows    = validateInt(args, 0);
         int numColumns = validateInt(args, 1);
         int wins       = validateInt(args, 2);
@@ -46,4 +47,5 @@ public class EnumerationsMain
         }
         return 3;
     }
+
 }

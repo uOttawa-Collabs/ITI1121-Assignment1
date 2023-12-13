@@ -1,594 +1,827 @@
 <center>
   <h1>ITI 1521. Introduction à l’informatique II</h1>
   <h3>Devoir 2</h3>
-  <h3>Échéance: 11 jun 2020, 23 h 00</h3>
+  <h3>Échéance: 09 jui 2020, 23 h 00</h3>
 </center>
 
 ## Objectifs d’apprentissage
 
-* Utiliser des interfaces
-* Appliquer le polymorphisme dans la conception d’une application
-* Explorer le concept de copie profonde
-* Expérimenter les listes et les énumérations
+* Itérer à travers différents états
+* Appliquer la technique de l’indirection
 
 ## Introduction
 
-Dans le cadre de ce devoir, nous poursuivons notre travail sur le jeu du Tic-Tac-Toe. Lors du dernier devoir, nous avons mis au point une implémentation de base du jeu, qui peut être joué par deux humains. Cette fois, nous allons d’abord créer un «joueur informatique», qui n’est pas très intelligent mais qui peut au moins jouer selon les règles du jeu. Nous pourrons ainsi jouer humain contre ordinateur. Nous mettrons ensuite cela de côté et nous nous efforcerons d’énumérer tous les jeux possibles. Cette énumération sera utilisée plus tard lorsque nous créerons un joueur informatique qui pourra bien jouer.
+Pour le devoir précédent, nous avions autorisé le traitement des jeux symétriques. Dans cet devoir, nous supprimerons ces jeux symétriques pour rendre notre espace de recherche plus petit.
 
-## Humain contre machine (sans intelligence)
+## Symétries et itérateurs
 
-Une façon très simple de faire jouer un programme au Tic-Tac-Toe est de lui faire choisir au hasard une case vide à jouer à chaque tour. Bien sûr, une telle implémentation devrait être facile à battre, mais au moins on peut jouer contre elle.
+Lorsque nous avons créé notre liste de jeux pour la deuxième question du devoir 2, nous avons ajouté beaucoup de solutions qui étaient essentiellement identiques, simplement une symétrie des autres jeux déjà énumérés.
 
-Afin de concevoir cette solution, nous voulons introduire le concept de joueur (**Player**). Pour l’instant, nous aurons deux catégories de joueurs : le joueur humain, et le joueur informatique sans intelligence. Plus tard, nous pourrons introduire d’autres types de joueurs, par exemple un joueur informatique intelligent, un joueur parfait, etc. Ce sont tous des joueurs (de type **Player**).
+Examinons les symétries dans une grille de n × m. Supposons d’abord que n 􏰀 m, c’est-à-dire que la grille n’est pas carrée. Dans le cas d’une grille non carrée, nous avons essentiellement deux symétries : le basculement vertical et le basculement horizontal (Figure 1).
 
-![Player Interface in UML](uml_player.png)
+![Figure 1 : Les grilles non carrées ont deux axes de symétrie.](figure01_non_square_symmetry.png)
+**Figure 1 : Les grilles non carrées ont deux axes de symétrie.**
 
-**Figure 1: Figure 1 – L’interface Player et les deux classes qui la mettent en oeuvre.**
+Pour chaque grille non carrée n × m, il y a jusqu’à trois grilles différentes mais symétriques : celle obtenue avec une symétrie verticale, celle obtenue avec une symétrie horizontale, et celle obtenue avec une combinaison des deux symétries (Figure 2).
 
-Ce que nous obtenons de cette abstraction (**Players**), c’est qu’il est possible d’organiser un match entre deux joueurs, et de faire jouer ces deux joueurs une série de parties, en comptant les points pour le match, etc. Nous pou- vons avoir des joueurs humains contre humains, humains contre ordinateurs sans intelligence, intelligents contre ordinateurs sans intelligence, ou n’importe quelle combinaison de joueurs, cela n’a pas d’impact sur la façon dont le jeu est joué : nous avons deux joueurs, et ils alternent en jouant un coup sur le jeu jusqu’à ce que la partie soit terminée. La condition pour pouvoir faire cela est que tous les joueurs possèdente une méthode **play()**, qui peut être appelée lorsque c’est le tour de ce joueur de jouer.
+![Figure 2: Les grilles non carrées ont jusqu’à trois grilles symétriques équivalentes.](figure02_non_square_symmetry.png)
+**Figure 2: Les grilles non carrées ont jusqu’à trois grilles symétriques équivalentes.**
 
-Nous pouvons choisir qui joue qui, par exemple un humain contre un ordinateur. Le joueur qui joue en premier est choisi au hasard. Dans les parties suivantes, les joueurs alternent comme premier joueur. Comme d’habitude, le premier joueur joue X et le deuxième joueur joue O, de sorte que chaque joueur alterne entre jouer X et jouer O.
+Ce qui sera pratique, c’est qu’il est possible d’itérer à travers toutes ces symétries en appliquant des transforma- tions répétées, par exemple la série symétrie horizontale, puis verticale, puis horizontale vous donnera les quatre grilles, comme le montre Figure 3.
 
-L’impression suivante montre un jeu typique.
+![Figure 3: Enumération de toutes les grilles symétriques non carrées.](figure03_non_square_symmetry.png)
+**Figure 3: Enumération de toutes les grilles symétriques non carrées.**
 
+Les choses sont un peu plus compliquées lorsque la grille est carrée. En plus des symétries horizontales et verticales, nous avons les deux diagonales, ainsi que la rotation (Figure 4).
+
+![Figure 4: Les grilles carrées ont 4 axes de symétrie, et peuvent également être tournées de 90 degrés.](figure04_non_square_symmetry.png)
+**Figure 4: Les grilles carrées ont 4 axes de symétrie, et peuvent également être tournées de 90 degrés.**
+
+Chaque carré nous donne maintenant jusqu’à 7 autres grilles différentes mais symétriques, comme le montre la Figure 5.
+
+![Figure 5: Les grilles carrées ont 7 grilles symétriques équivalents.](figure05_non_square_symmetry.png)
+**Figure 5: Les grilles carrées ont 7 grilles symétriques équivalents.**
+
+
+Encore une fois, il est possible d’itérer à travers les 8 différentes grilles («carrées») mais équivalents et symétriques, par exemple avec la séquence rotation-rotation-rotation-symétrie horizontale - rotation-rotation-rotation-rotation, comme le montre la figure 6.
+
+![Figure 6: Enumération de tous les grilles carrées symétriques.](figure06_non_square_symmetry.png)
+**Figure 6: Enumération de tous les grilles carrées symétriques.**
+
+## Étape 1 : Créer Transfomer.java
+
+Il ressort de la discussion ci-dessus que la mise en œuvre de la symétrie horizontale, de la symétrie verticale et de la rotation de 90 degrés (dans le sens des aiguilles d’une montre) est suffisante pour obtenir toutes les grilles symétriques possibles, qu’ils soient carrés ou non.  Nous allons créer une nouvelle classe Transformer pour gérer toutes les symétries de transformation.
+
+```java
+public class Transformer {
+
+}
+```
+
+### Ajouter une énumération des types de rotation
+
+Nous voulons ajouter une énumération de toutes les rotations possibles en créant une class `enum` dans notre classe `Transformer`.
+
+```java
+  /**
+   * An static enum  for the types of
+   * allowable transformations
+   */
+  public static enum Type {
+    UNKNOWN,
+    IDENTITY,
+    ROTATION,
+    VERTICAL_SYMMETRY,
+    HORIZONAL_SYMMETRY,
+  }
+```
+
+Le `UNKNOWN` est utile pour les tests, et le` IDENTITY` ne fait aucune rotation du tout.
+
+
+### Mettre en œuvre les transformations
+
+Nous allons ajouter cinq méthodes dans Transformer.java.
+
+Cette méthode utilise l'énum ci-dessus et appelle les méthodes de transformation individuelles.
+
+```java
+  /**
+   * Applies the transformation specified as parameter
+   * to board
+   *
+   * If the transformation was successful return true, if not return false;
+   */
+  public static boolean transform(Type transformation, int numRows, int numColumns, int[] board) {
+
+    switch(transformation) {
+    case IDENTITY:
+      return identity(numRows, numColumns, board);
+    case ROTATION:
+      return rotate90(numRows, numColumns, board);
+    case VERTICAL_SYMMETRY:
+      return verticalFlip(numRows, numColumns, board);
+    case HORIZONAL_SYMMETRY:
+      return horizontalFlip(numRows, numColumns, board);
+    default:
+      return false;
+    }
+  }
+```
+
+Conformément à notre approche précédente, les grilles vont être mémorisées à l’aide d’un tableau unidimensionnel. Pour des raisons qui deviendront très bientôt évidentes, nous utiliserons un tableau d’entiers pour notre grille. Chacune des méthodes aura trois paramètres : le nombre de lignes et le nombre de colonnes de la grille, et une référence au tableau d’entiers représentant la grille. Vous devez implémenter les méthodes de classe dans la classe Transformer.java, c’est-à-dire :
+
+#### Identity
+
+```java
+public static boolean identity(int numRows, int numColumns, int[] board) {
+```
+
+Sets the board to the identity board where the value at each index is the index itself (in other words do a "no flip" flip).  Here we ignore the current values withiin the provided board and populate each index with its index value.
+
+For example, the identity board of a 3x3 game is
 
 ```
-$ java GameMain
-Player 2's turn.
-Player 1's turn.
+ 0 | 1 | 2
+----------
+ 3 | 4 | 5
+----------
+ 6 | 7 | 8
+```
 
+#### Inversé horizontale
+
+```java
+public static void horizontalFlip(int numRows, int numRows, int[] board)
+```
+
+Effectue une symétrie horizontale sur les éléments de la grille numRows × numRows enregistrés dans le tableau référé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
+
+Si l'on considère une grille 3x3.
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+La grille inversé horizontalement mis à jour serait
+
+```
+ 7 | 8 | 9
+----------
+ 4 | 5 | 6
+----------
+ 1 | 2 | 3
+```
+
+#### Inversé vertical
+
+```java
+public static void verticalFlip(int numRows, int numRows, int[] board)
+```
+
+Effectue une symétrie verticale sur les éléments de la grille numRows × numRows enregistrés dans le tableau référencé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
+
+Si l'on considère une grille 3x3.
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+La grille inversé verticalement mis à jour serait
+
+```
+ 3 | 2 | 1
+----------
+ 6 | 5 | 4
+----------
+ 9 | 8 | 7
+```
+
+#### Rotation à 90 degrés
+
+```java
+public static void rotate(int numRows, int numRows, int[] board);
+```
+
+Pivote de 90 degrés dans le sens des aiguilles d’une montre les éléments de la grille numRows × numRows enregistrés dans le tableau référencé par board. Les éléments du tableau référencé par board sont modifiés en conséquence (voir l’exemple ci-dessous).
+
+Si l'on considère une grille 3x3.
+
+```
+ 1 | 2 | 3
+----------
+ 4 | 5 | 6
+----------
+ 7 | 8 | 9
+```
+
+La nouvelle grille pivotée de 90 degrés serait
+
+```
+ 7 | 4 | 1
+ ----------
+ 8 | 5 | 2
+ ----------
+ 9 | 6 | 3
+```
+
+Notez que vous ne pouvez faire pivotée que des grille n x n.
+
+
+### Test manuel du Transformer
+
+Toutes les méthodes doivent vérifier les entrées fournies et gérer tous les cas possibles selon les besoins. La classe Transformer.java à les tests suivants:
+
+
+```java
+  private static void test(int numRows, int numColumns) {
+    int[] test;
+    test = new int[numRows*numColumns];
+
+    System.out.println("testing " + numRows + " numRows and " + numColumns + " numColumns.");
+
+    identity(numRows, numColumns, test);
+    System.out.println(java.util.Arrays.toString(test));
+
+    horizontalFlip(numRows,numColumns,test);
+    System.out.println("HF => " + java.util.Arrays.toString(test));
+
+    horizontalFlip(numRows,numColumns,test);
+    System.out.println("HF => " + java.util.Arrays.toString(test));
+
+    verticalFlip(numRows,numColumns,test);
+    System.out.println("VF => " + java.util.Arrays.toString(test));
+
+    verticalFlip(numRows,numColumns,test);
+    System.out.println("VF => " + java.util.Arrays.toString(test));
+
+    for(int i = 0; i < 4; i++) {
+      boolean didTransform = rotate90(numRows,numColumns,test);
+      if (didTransform) {
+        System.out.println("ROT => " + java.util.Arrays.toString(test));
+      }
+    }
+  }
+
+  public static void main(String[] args) {
+    int[] test;
+    int numRows, numColumns;
+
+    test(2,2);
+    test(2,3);
+    test(3,3);
+    test(4,3);
+    test(4,4);
+  }
+```
+
+L'exécution des tests ci-dessus devrait produire la sortie suivante:
+
+```java
+$ javac Transformer.java
+$ java Transformer
+```
+
+La sortie ressemblerait à
+
+```java
+testing 2 numRows and 2 numColumns.
+[0, 1, 2, 3]
+HF => [2, 3, 0, 1]
+HF => [0, 1, 2, 3]
+VF => [1, 0, 3, 2]
+VF => [0, 1, 2, 3]
+ROT => [2, 0, 3, 1]
+ROT => [3, 2, 1, 0]
+ROT => [1, 3, 0, 2]
+ROT => [0, 1, 2, 3]
+testing 2 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5]
+HF => [3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5]
+VF => [2, 1, 0, 5, 4, 3]
+VF => [0, 1, 2, 3, 4, 5]
+testing 3 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8]
+HF => [6, 7, 8, 3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+VF => [2, 1, 0, 5, 4, 3, 8, 7, 6]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+ROT => [6, 3, 0, 7, 4, 1, 8, 5, 2]
+ROT => [8, 7, 6, 5, 4, 3, 2, 1, 0]
+ROT => [2, 5, 8, 1, 4, 7, 0, 3, 6]
+ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8]
+testing 4 numRows and 3 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+HF => [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+VF => [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+testing 4 numRows and 4 numColumns.
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+HF => [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3]
+HF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+VF => [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12]
+VF => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+ROT => [12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3]
+ROT => [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+ROT => [3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12]
+ROT => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+```
+
+## Étape 2: Génération de tous les jeux non symétriques n × m
+
+Dans le devoir 2, nous avons déjà créé une méthode qui génère tous les jeux possibles pour une taille de grille donnée. Cette méthode ajoutait un jeu à la liste uniquement si le jeu n’était pas égale à un jeu qui était déjà là. De ce point de vue, il suffit donc de modifier légèrement cette méthode pour n’ajouter un jeu que s’il n’est pas égale ou symétrique à un jeu qui existe déjà.
+
+### Mettre à jour `equals` à inclure des grilles symétriques
+
+Mettez à jour la méthode `equals` de` TicTacToe` pour considérer également les jeux symétriques comme égaux. Une fois mis à jour, le `generateAllGames` dans` TicTacToeEnumerations` générera la liste des listes que nous cherchons.
+
+Si l'on considère une grille 3x3.
+
+```
  X |   |
------------
+----------
    |   |
------------
+----------
    |   |
-
-O to play:
 ```
 
-Ici, le joueur 2 (l’ordinateur) a été sélectionné pour commencer la première partie.
-
-Comme on peut le voir, le joueur de l’ordinateur n’imprime rien lorsqu’il joue, il fait juste son coup en silence. Ensuite, c’est au tour du joueur 1 (l’humain). Suivant ce que nous avons fait dans le devoir 1, l’objet HumanPlayer imprime d’abord la partie (ici, on peut voir que l’ordinateur a joué la cellule 1) et demande ensuite à l’humain (nous, l’utilisateur) de jouer. Ci-dessous, nous voyons que l’humain a sélectionné la cellule 2. L’ordinateur jouera alors (en silence) et l’humain sera à nouveau invité à jouer. Cela continue jusqu’à la fin de la partie :
+Il devrait être mis à jour afin que le tableau symétrique suivant soit également égal à
 
 ```
-O to play: 2
-Player 2's turn.
-Player 1's turn.
-
- X | O | X
------------
+   |   | X
+----------
    |   |
------------
+----------
    |   |
-
-O to play:
 ```
 
-Et alors.
+Continuez a lire pour savoir comment effectuer ce changement.
 
-```
-O to play: 6
-Player 2's turn.
-Player 1's turn.
 
- X | O | X
------------
- X |   | O
------------
-   |   |
+### Indirection
 
-O to play:
-```
+Afin d’implémenter `equals` dans `TicTacToe`, nous devrons passer en boucle tous les jeux symétriques possibles pour voir si nous avons une correspondance. Bien sûr, nous pourrions simplement appliquer les symétries sur le jeu lui-même. Nous appliquerions ainsi des transformations sur la grille jusqu’à ce qu’elle corresponde à la grille du jeu auquel nous la comparons (auquel cas elle est symétrique) ou que nous n’ayons plus de jeux symétriques (auquel cas elle n’est pas symétrique).
 
-Et alors.
+Cependant, changer le tableau lui-même peut avoir des effets secondaires non désirés. Par exemple, imaginez que nous imprimons le jeu à l’utilisateur. Ce qui se passerait, c’est que, puisque le jeu est basculé vers des jeux symétriques équivalents, le jeu présenté à l’utilisateur pourrait être un jeu différent mais symétrique à chaque fois, ce qui ne serait clairement pas souhaitable.
 
-```
-O to play: 7
-Player 2's turn.
-Player 1's turn.
+C’est pourquoi nous allons introduire un niveau d’indirection pour calculer nos symétries.
 
- X | O | X
------------
- X | X | O
------------
- O |   |
+```java
+  /**
+   * The transformed board
+   * Initialized as the identity (board), i.e. no changes
+   * it will store the transformed index of each value
+   * in the underlying board
+   */
+  int[] boardIndexes;
 
-O to play:
+  /**
+   * What are all the allowable transformations of this board
+   * There are more transformations for square boards
+   */
+  int allowableIndex;
+  Transformer.Type[] allowable;
 ```
 
-Et alors.
+Le tableau lui-même restera inchangé, mais nous utiliserons un autre tableau qui fera correspondre les indices du tableau à leurs emplacements symétriques actuels. Nous utiliserons une variable d’instance, le tableau d’entier `boardIndexes` pour enregistrer l’indirection.
+
+Au départ, comme il n’y a pas de transformation, nous avons toujours `board[i]==board[boardIndexes[i]]` (la transformation d'identité). Mais après avoir appliqué quelques symétries au jeu, `boardIndexes[i]` enregistre où l’index `i` du jeu est mis en correspondance dans la symétrie.
+
+
+### Itérer sur des tableaux symétriques
+
+Pour itérer le tableau symétrique, nous avons besoin d'une stratégie. Chaque grille a quatre ou huit positions symétriques selon qu'elle est carrée ou non. Nous proposons un mécanisme pratique pour itérer toutes les positions possibles, en utilisant de nouvelles méthodes d'instance
 
 ```
-O to play: 9
-Player 2's turn.
-Game over
+  /**
+   * Reset the board back to it's original position
+   */
+  public void reset() { ... }
 
- X | O | X
------------
- X | X | O
------------
- O | X | O
+  /**
+   * Can we rotate the board anymore?
+   */
+  public boolean hasNext() { ... }
 
-Result: DRAW
-Play again (y)?:
+  /**
+   * Rotate the board to based on the next allowable rotation
+   */
+  public boolean next() { ... }
 ```
 
-Ce jeu se termine par un match nul (DRAW). La phrase «Game over» est imprimée après le dernier coup (effectué par l’ordinateur dans ce cas), puis le tableau final est imprimé, et le résultat de la partie («Result : DRAW»).
+* `hasNext()` retourne true si et seulement si un appel à la méthode next réussirait, et false sinon.
+* `next()` transformera les `boardIndexes` de la grille pour correspondre à la prochaine transformation disponible, elle va retourner `true` si cela était possible et `false` s'il ne reste plus d'itérations.
+* `reset()` remet le `boardIndexes` dans l'état initial `identity`
 
-On demande alors à l’utilisateur s’il veut jouer à nouveau.
+Le programme Java suivant illustre l’utilisation souhaitée pour next, et reset (notez que `hasNext` n'était pas nécessaire car `next` effectue le vérification pour nous). La méthode `toString` a été mise à jour pour renvoyer la version transformée du jeu.
 
-Ici, nous voulons jouer un autre jeu. Cette fois, c’est l’humain qui fera le premier coup. Ci-dessous, vous pouvez voir l’ensemble de la partie, qui est une victoire pour l’humain. Ensuite, une troisième partie est jouée, également une victoire pour l’humain, et nous arrêtons de jouer après cela.
+```java
+public class Test {
+
+  private static void printTest(TicTacToe g) {
+    System.out.println("PRINTING GAME");
+    g.reset();
+    while (g.next()) {
+      System.out.println(g.toString());
+      System.out.println("");
+    }
+
+    System.out.println("reset:");
+    g.reset();
+    while (g.next()) {
+      System.out.println(g.toString());
+      System.out.println("");
+    }
+    System.out.println("DONE PRINTING GAME");
+  }
+
+  public static void main(String[] args) {
+    TicTacToe g;
+
+    System.out.println("Test on a 3x3 game");
+    g = new TicTacToe();
+    g.play(0);
+    g.play(2);
+    g.play(3);
+    printTest(g);
+
+    printTest(g);
+    System.out.println("Test on a 5x4 game");
+    g = new TicTacToe(4,5,3);
+    g.play(0);
+    g.play(2);
+    g.play(3);
+    printTest(g);
+  }
+}
+```
+
+Les sorties d'exécution de code sont ci-dessus:
 
 ```
-Play again (y)?: y
-Player 1's turn.
-
-   |   |
+Test on a 3x3 game
+PRINTING GAME
+   | X | O
 -----------
    |   |
 -----------
    |   |
 
-X to play: 1
-
-Player 2's turn.
-Player 1's turn.
-
- X | O |
------------
    |   |
 -----------
-   |   |
-
-X to play: 4
-
-Player 2's turn.
-Player 1's turn.
-
- X | O | O
------------
- X |   |
------------
-   |   |
-
-X to play: 7
-Game over
-
- X | O | O
------------
- X |   |
------------
- X |   |
-
-Result: XWIN
-Play again (y)?: y
-
-Player 2's turn.
-Player 1's turn.
-
- X |   |
------------
-   |   |
------------
-   |   |
-
-O to play: 3
-
-Player 2's turn.
-Player 1's turn.
-
- X | X | O
------------
-   |   |
------------
-   |   |
-
-O to play: 6
-
-Player 2's turn.
-Player 1's turn.
-
- X | X | O
------------
- X |   | O
------------
-   |   |
-
-O to play: 9
-Game over
-
- X | X | O
------------
- X |   | O
+   |   | X
 -----------
    |   | O
 
-Result: OWIN
-Play again (y)?: n
-```
-
-Nous sommes maintenant prêts à programmer notre solution. Nous allons réutiliser l’implémentation de la classe TicTacToeGame du devoir 1 avec quelques petits changements. Une classe Utils a été fournie pour avoir un accès à quelques constantes et variables globales.
-
-
-### Player
-
-_Player_ est une interface. Elle ne définit qu’une seule méthode, la méthode play. Le type de sa valeur de retour est
-**boolean** (le joueur a-t-il réussi à jouer) et elle a un paramètre d’entrée, une référence à un objet de la classe TicTacToeGame.
-
-### HumanPlayer
-
-_HumanPlayer_ est une classe qui réalise l’interface **Player**. Dans son implémentation de la méthode **play**, elle vérifie d’abord que le jeu est effectivement jouable (et renvoie faux si ce n'est pas), puis demande à l’utilisateur une entrée valide (similaire à celui du devoir 1). Une fois qu’une telle entrée a été fournie, il joue le jeu et donne le contrôle à l’autre joueur et renvoie vrai.
-
-### ComputerInOrderPlayer
-
-_ComputerInOrderPlayer_ est une classe qui implémente également l'interface _Player_. Dans son implémentation de la méthode play, il vérifie d'abord que le jeu est jouable (et retourne faux s'il ne l'est pas), puis choisit la première cellule disponible.
-
-## ComputerRandomPlayer
-
-Faisons un joueur d'ordinateur légèrement plus intelligent.
-
-
-**ComputerRandomPlayer** est une classe qui réalise également l’interface Player. Dans son implémentation de la méthode play, elle vérifie d’abord que la partie est effectivement jouable (et renvoie faux si ce n'est pas), puis choisit au hasard le cellule suivant, le joue et passe la main à l’autre joueur. Tous les cellules suivants possibles ont une chance égale d’être joués.
-
-### GameMain
-
-Cette classe implémente le jeu. La partie initiale est très similaire à celle du devoir 1. L’ensemble du jeu est joué dans la méthode principale. Une variable locale **players**, une référence à un tableau de deux joueurs, est utilisée pour stocker le joueur humain et le joueur informatique. Vous **devez** utiliser ce tableau pour stocker vos références **Player**.
-
-Vous devez terminer l’implémentation de la méthode principale afin d’obtenir le comportement spécifié. Vous devez vous assurer que le premier joueur est initialement choisi au hasard et que le premier coup alterne entre les deux joueurs lors des parties suivantes.
-
-Voici un autre exemple de jeu, cette fois sur une grille de 4×4 et 2 cellules alignées pour une victoire. Les joueurs humains font une série d’erreurs de saisie en cours de rout
-
-Nous avons deux arguments supplémentaires par rapport à devor 1, "player1" et "player2" qui peuvent être:
-
-* "h" pour le joueur humain
-* "ic" pour le joueur d'ordinateur dans l'ordre
-* "rc" pour le joueur d'ordinateur aléatoire
-
-```
-$ java GameMain h ic 4 4 2
-Player 1's turn.
-
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-X to play: 2
-Player 2's turn.
-Player 1's turn.
-
- O | X |   |
----------------
-   |   |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-X to play: 99
-The value should be between 1 and 16
-
-X to play: 2
-Cell 2 has already been played with X
-
-X to play: 6
-Game over
-
- O | X |   |
----------------
-   | X |   |
----------------
-   |   |   |
----------------
-   |   |   |
-
-Result: XWIN
-Play again (Y)?:n
-```
-
-
-## Énumérations de jeux TicTacToe
-
-Nous nous intéressons maintenant à autre chose : les énumérations (dénombrements) de jeux. Nous souhaitons générer tous les jeux possibles pour une taille de grille et nombre de cellules alignées pour une victoire donnés.
-
-Par exemple, si nous prenons la grille par défaut, 3 × 3, il y a 1 grille au niveau 0, à savoir :
-
-
-```
    |   |
 -----------
    |   |
 -----------
-   |   |
-```
+ O | X |
 
-Il y a ensuite 9 grilles au niveau 1, à savoir :
-
-```
- X |   |
------------
-   |   |
------------
-   |   |
-```
-
-```
-   | X |
------------
-   |   |
------------
-   |   |
-```
-
-```
-   |   | X
------------
-   |   |
------------
-   |   |
-```
-
-```
-   |   |
+ O |   |
 -----------
  X |   |
 -----------
    |   |
-```
 
-```
    |   |
------------
-   | X |
------------
-   |   |
-```
-
-```
-   |   |
------------
-   |   | X
------------
-   |   |
-```
-
-```
-   |   |
------------
-   |   |
------------
- X |   |
-```
-
-```
-   |   |
------------
-   |   |
------------
-   | X |
-```
-
-```
-   |   |
------------
-   |   |
------------
-   |   | X
-```
-
-Il y a alors 72 grilles au niveau 2, trop nombreuses pour être imprimées ici. En annexe sectionA, nous fournissons la liste complète des jeux pour une grille 2 × 2, avec une taille de victoire de 2. Notez qu’aucun jeu de niveau 4 n’apparaît sur cette liste : il est simplement impossible d’atteindre le niveau 3 et de ne pas gagner sur une grille 2 × 2 et un nombre de cellules à alignées de 2 pour une victoire. Dans notre énumération, nous n’énumérons pas deux fois le même jeu, et nous ne continuons pas après qu’une partie ait été gagnée.
-
-
-### Notre implémentation
-
-Pour cette implémentation, nous allons ajouter quelques nouvelles méthodes à notre classe **TicTacToe** et nous allons créer une nouvelle classe, **TicTacToeEnumerations**, pour générer nos jeux. Nous allons stocker nos jeux dans une liste de listes. Nous aurons très bientôt notre propre implémentation du type de données abstrait List, mais nous ne l’avons pas encore. Par conséquent, exceptionnellement pour ITI1X21, nous allons utiliser une solution clé en main. Dans ce cas, nous utiliserons java.util.linkedList. La documentation est disponible à l’adresse https://docs.oracle.com/javase/9/docs/api/java/util/LinkedList.html.
-
-Le but est de créer une liste de listes : chaque liste contiendra tous les différents jeux pour un niveau donné. Reprenons la grille par défaut, 3 × 3. Notre liste comportera 10 éléments.
-
-* Le premier élément est la liste des grilles 3 × 3 au niveau 0. Il y a 1 telle grille, donc cette liste a 1 élément.
-* Ledeuxièmeélémentestlalistedesgrilles3×3auniveau1.Ilya9grillesdecetype,donccettelistecomporte
-9 éléments.
-* Le troisième élément est la liste des grilles 3 × 3 au niveau 2. Il existe 72 grilles de ce type, donc cette liste comporte 72 éléments.
-* Le quatrième élément est la liste des grilles 3 × 3 au niveau 3. Il existe 252 grilles de ce type, donc cette liste comporte 252 éléments.
-* Le cinquième élément est la liste des grilles 3 × 3 au niveau 4. Il y a 756 grilles de ce type, donc cette liste comporte 756 éléments.
-
-...
-
-* Le neuvième élément est la liste des grilles 3 × 3 au niveau 8. Il existe 390 grilles de ce type, donc cette liste comporte 390 éléments.
-* Le dixième élément est la liste des grilles 3 × 3 au niveau 9. Il existe 78 grilles de ce type, donc cette liste comporte 78 éléments.
-
-
-La classe **EnumerationsMain.java** vous est fournie. Elle appelle la génération de la liste et imprime quelques informations à son sujet. Voici quelques exécutions typiques :
-
-```
-$ java EnumerationsMain
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 9 element(s) (9 still playing)
-======= level 2 =======: 72 element(s) (72 still playing)
-======= level 3 =======: 252 element(s) (252 still playing)
-======= level 4 =======: 756 element(s) (756 still playing)
-======= level 5 =======: 1260 element(s) (1140 still playing)
-======= level 6 =======: 1520 element(s) (1372 still playing)
-======= level 7 =======: 1140 element(s) (696 still playing)
-======= level 8 =======: 390 element(s) (222 still playing)
-======= level 9 =======: 78 element(s) (0 still playing)
-that's 5478 games
-564 won by X
-316 won by O
-78 draw
-```
-
-Nous pouvons spécifier la taille de la grille et le nombre d'affilées à gagner
-
-```
-$ java EnumerationsMain 3 3 2
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 9 element(s) (9 still playing)
-======= level 2 =======: 72 element(s) (72 still playing)
-======= level 3 =======: 252 element(s) (112 still playing)
-======= level 4 =======: 336 element(s) (136 still playing)
-======= level 5 =======: 436 element(s) (40 still playing)
-======= level 6 =======: 116 element(s) (4 still playing)
-======= level 7 =======: 12 element(s) (0 still playing)
-that's 1234 games
-548 won by X
-312 won by O
-0 draw
-```
-
-Voici une petite grille 2x2.
-
-```
-$ java EnumerationsMain 2 2 2
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 4 element(s) (4 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 12 element(s) (0 still playing)
-that's 29 games
-12 won by X
-0 won by O
-0 draw
-```
-
-Voici une grille _impossible pour gagner_ 2x2.
-
-```
-$ java EnumerationsMain 2 2 3
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 4 element(s) (4 still playing)
-======= level 2 =======: 12 element(s) (12 still playing)
-======= level 3 =======: 12 element(s) (12 still playing)
-======= level 4 =======: 6 element(s) (0 still playing)
-that's 35 games
-0 won by X
-0 won by O
-6 draw
-```
-
-Here is a larger 5x2 board.
-
-```
-$ java EnumerationsMain 5 2 3
-======= level 0 =======: 1 element(s) (1 still playing)
-======= level 1 =======: 10 element(s) (10 still playing)
-======= level 2 =======: 90 element(s) (90 still playing)
-======= level 3 =======: 360 element(s) (360 still playing)
-======= level 4 =======: 1260 element(s) (1260 still playing)
-======= level 5 =======: 2520 element(s) (2394 still playing)
-======= level 6 =======: 3990 element(s) (3798 still playing)
-======= level 7 =======: 3990 element(s) (3290 still playing)
-======= level 8 =======: 2580 element(s) (2162 still playing)
-======= level 9 =======: 1032 element(s) (646 still playing)
-======= level 10 =======: 150 element(s) (0 still playing)
-that's 15983 games
-1212 won by X
-610 won by O
-150 draw
-```
-
-### TicTacToe Changes
-
-Nous devons ajouter trois nouvelles méthodes publiques à la classe TicTacToeGame :
-
-#### cloneNextPlay
-
-```java
-public TicTacToe cloneNextPlay(int nextMove)
-```
-
-La méthode `cloneNextPlay` est utilisé pour créer une nouvelle instance de la classe `TicTacToe` basé sur l'instance actuelle. La nouvelle instance sera un jeu dont l’état est le même que celui référencé, mais dans lequel la position suivante (`nextMove`) a été jouée. Par exemple, imaginez un jeu suivant :
-
-```
- O |   | X
------------
- X |   |
------------
-   |   |
-```
-
-L’appel suivant :
-
-```java
-game.cloneNextPlay(7);
-```
-
-renvoie une référence au jeu suivant :
-
-```
- O |   | X
 -----------
  X |   |
 -----------
  O |   |
-```
 
-Une considération importante dans la mise en œuvre de cette méthode est que le jeu référencé ne doit pas être modifié par l’appel. Consultez l’annexe B pour mieux comprendre ce qui est nécessaire pour y parvenir.
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
 
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
 
-#### equals
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
 
-```java
-public boolean equals(Object obj)
-```
+reset:
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
 
-La méthode compare le jeu actuel avec le jeu référencé par other. Cette méthode renvoie `true` si et seulement si les deux jeux sont considérés comme identiques : ils ont les mêmes caractéristiques, et leur grille est dans le même état.
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
 
-#### emptyPositions
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
 
-The `emptyPositions` returns an array of positions that are empty and available to be played on. The results are 1-based (not zero).
-
-Par exemple, imaginez un jeu suivant :
-
-```
- O |   | X
+ O |   |
 -----------
  X |   |
 -----------
    |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+DONE PRINTING GAME
+PRINTING GAME
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
+
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
+
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
+
+ O |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+reset:
+   | X | O
+-----------
+   |   |
+-----------
+   |   |
+
+   |   |
+-----------
+   |   | X
+-----------
+   |   | O
+
+   |   |
+-----------
+   |   |
+-----------
+ O | X |
+
+ O |   |
+-----------
+ X |   |
+-----------
+   |   |
+
+   |   |
+-----------
+ X |   |
+-----------
+ O |   |
+
+ O | X |
+-----------
+   |   |
+-----------
+   |   |
+
+   |   | O
+-----------
+   |   | X
+-----------
+   |   |
+
+   |   |
+-----------
+   |   |
+-----------
+   | X | O
+
+DONE PRINTING GAME
+Test on a 5x4 game
+PRINTING GAME
+   | X | O |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   | X | O |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   | O | X |
+
+   |   | O | X |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+reset:
+   | X | O |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   | X | O |   |
+
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   | O | X |
+
+   |   | O | X |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+-------------------
+   |   |   |   |
+
+DONE PRINTING GAME
 ```
 
-L’appel suivant :
+Nous n'avons besoin que de trois transformations pour identifier les jeux symétriques:
+
+* symétrie verticale (`VERTICAL_SYMMETRY`)
+* symétrie horizontale (`HORIZONAL_SYMMETRY`)
+* Rotation à 90 degrés (`ROTATION`)
+
+Nous devons également avoir un `reset` pour démarrer (et réinitialiser) le jeu dans son état d'origine
+
+* transformation de l'identité (`IDENTITY`)
+
+#### Mettez à jour Transformer pour déterminer les transformations autorisées
+
+Mettez à jour `Transformer` pour renvoyer un tableau de `Transformer.Type`s basé sur le
+règles ci-dessus dans
+
+```
+public static Type[] symmetricTransformations(int numRows, int numColumns) {
+```
+
+Suite à un appel à la méthode `reset()`, chaque appel à la méthode `next()` modifie l'orientation du jeu en fonction de la liste d'opérations suivante:
+
+##### Grille non carrées
+
+* IDENTITY
+* HORIZONAL_SYMMETRY
+* VERTICAL_SYMMETRY
+* HORIZONAL_SYMMETRY
+
+##### Grilles carrées
+
+* IDENTITY
+* ROTATION
+* ROTATION
+* ROTATION
+* HORIZONAL_SYMMETRY
+* ROTATION
+* ROTATION
+* ROTATION
+
+
+#### Mettre à jour TicTacToe pour prendre en charge les transformations
+
+Ajoutez toutes les variables d'instance nécessaires pour implémenter les méthodes:
+
+* `hasNext`,
+* `next`, et
+* `reset`
+
+Mettez à jour la méthode `equals` qui retourne vrai si et seulement si cette instance de` TicTacToe` et `other` sont identiques, y compris les grilles symétriques en utilisant les méthodes ci-dessus.
+
+La méthode de classe `generateAllGames` dans `TicTacToeEnumerations` est déjà
+implémenté et utilise la méthode `equals` pour générer la liste des jeux.
+
+Voici quelques exécutions avec la mis à jour de la méthode `equals`.
+
 
 ```java
-game.emptyPositions();
+java EnumerationsMain
 ```
 
-renvoie :
+Sorti
+
+
+```bash
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 3 element(s) (3 still playing)
+======= level 2 =======: 12 element(s) (12 still playing)
+======= level 3 =======: 38 element(s) (38 still playing)
+======= level 4 =======: 108 element(s) (108 still playing)
+======= level 5 =======: 174 element(s) (153 still playing)
+======= level 6 =======: 204 element(s) (183 still playing)
+======= level 7 =======: 153 element(s) (95 still playing)
+======= level 8 =======: 57 element(s) (34 still playing)
+======= level 9 =======: 15 element(s) (0 still playing)
+that's 765 games
+91 won by X
+44 won by O
+3 draw
+```
+
+Un autre exemple
 
 ```java
-[2, 5, 6, 7, 8, 9]
+java EnumerationsMain 4 4 2
 ```
 
-### TicTacToeEnumerations
+Sorti
 
-Cette nouvelle classe calcule un constructeur identique à `TicTacToe`
-
-```java
-public TicTacToeEnumerations(int aNumRows, int aNumColumns, int aSizeToWin)
 ```
-
-Et puis implémentez la méthode `generateAllGames` pour générer la liste des listes des jeux.
-
-```java
-public LinkedList<LinkedList<TicTacToe>> generateAllGames()
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 3 element(s) (3 still playing)
+======= level 2 =======: 33 element(s) (33 still playing)
+======= level 3 =======: 219 element(s) (141 still playing)
+======= level 4 =======: 913 element(s) (587 still playing)
+======= level 5 =======: 3338 element(s) (883 still playing)
+======= level 6 =======: 4702 element(s) (1217 still playing)
+======= level 7 =======: 7048 element(s) (511 still playing)
+======= level 8 =======: 2724 element(s) (194 still playing)
+======= level 9 =======: 1119 element(s) (0 still playing)
+that's 20100 games
+10189 won by X
+6341 won by O
+0 draw
 ```
-
-
-Cette méthode retourne la liste (chaînée) des listes (chaînées) de références TicTacToe que nous cherchons, pour les jeux sur une grille `numRows` x `numColumns` avec un nombre de cellules alignées pour une victoire de `sizeToWin`. Comme précisé, chacune des listes (secondaires) contient les listes de références au jeu du même niveau. Il y a trois facteurs importants à prendre en compte lors de l’élaboration de la liste :
-
-* Nous ne construisons des jeux que jusqu’à leur point de victoire (ou jusqu’à ce qu’ils atteignent le point d’égalité). Nous ne prolongeons jamais une partie déjà gagnée.
-* Nous ne dupliquons pas les jeux. Il y a plusieurs façons d’atteindre le même état, alors assurez-vous qu’un même jeu n’est pas listé plusieurs fois.
-* Nous n’incluons pas de listes vides. Comme on peut le voir dans appendice A, nous arrêtons notre énumération une fois que tous les jeux sont terminés. Dans le cas 2 × 2 avec un nombre de cellules alignées pour une victoire de 2, puisque toutes les parties sont terminées après 3 coups, la liste des listes ne comporte que 4 éléments : les parties après 0 coup, les parties après 1 coup, les parties après 2 coups et les parties après 3 coups.
-
-
-## JUnit
-
-Nous fournissons un ensemble de tests junit pour la classe TicTacToe. Ces tests devraient bien sûr permettre de s’assurer que votre implémentation est correcte. Ils peuvent aussi aider à clarifier le comportement attendu de cette classe.
-
-Veuillez lire les [instructions junit](JUNIT.fr.md) pour obtenir de l'aide avec l'exécution des tests.
 
 ## Soumission
 
@@ -599,22 +832,11 @@ Les erreurs de soumission affecteront vos notes.
 Soumettez les fichiers suivante.
 
 * STUDENT.md
-* ComputerInOrderPlayer.java
-* ComputerRandomPlayer.java
-* GameMain.java
-* HumanPlayer.java
 * TicTacToe.java
-* TicTacToeEnumerations.java
-
-Soumettez les fichiers suivants, mais ils ne doivent pas être modifiés.
-
-* CellValue.java
-* EnumerationsMain.java
-* GameState.java
-* Player.java
-* Utils.java
+* Transformer.java
 
 Cette soumission peut se faire en groupe de 2 +/- 1 personne. Assurez-vous que `STUDENT.md` inclut les noms de tous les participants; ne soumettez qu'une seule solution par groupe.
+
 
 ## Intégrité académique
 
@@ -632,155 +854,3 @@ Les cas de plagiat seront traités conformément au règlement de l’universit�
 4. Je n’ai collaboré avec aucune autre personne, à l’exception de mon partenaire dans le cas d’un travail d’équipe.
 
 * Si vous avez collaboré avec d’autres personnes ou obtenu le code source sur le Web, veuillez alors indiquer le nom de vos collaborateurs ou la source de l’information, ainsi que la nature de la collaboration. Mettez ces informations dans le fichier STUDENT.md. Des points seront déduits proportionnellement au niveau de l’aide fournie (de 0 à 100%).
-
-## Appendix A: Énumération de tous les jeux d’une grille 2 × 2
-
-```
-======= level 0 =======: 1 element(s)
-   |
--------
-   |
-```
-
-```
-======= level 1 =======: 4 element(s)
- X |
--------
-   |
-
-   | X
--------
-   |
-
-   |
--------
- X |
-
-   |
--------
-   | X
-```
-
-```
-======= level 2 =======: 12 element(s)
-
- X | O
--------
-   |
-
- X |
--------
- O |
-
- X |
--------
-   | O
-
- O | X
--------
-   |
-
-   | X
--------
- O |
-
-   | X
--------
-   | O
-
- O |
--------
- X |
-
-   | O
--------
- X |
-
-   |
--------
- X | O
-
- O |
--------
-   | X
-
-   | O
--------
-   | X
-
-   |
--------
- O | X
-```
-
-```
-======= level 3 =======: 12 element(s)
-
- X | O
--------
- X |
-
- X | O
--------
-   | X
-
- X | X
--------
- O |
-
- X |
--------
- O | X
-
- X | X
--------
-   | O
-
- X |
--------
- X | O
-
- O | X
--------
- X |
-
- O | X
--------
-   | X
-
-   | X
--------
- O | X
-
-   | X
--------
- X | O
-
- O |
--------
- X | X
-
-   | O
--------
- X | X
-```
-
-## Appendix B: Shallow copy versus Deep copy
-
-Comme vous le savez, les objets ont des variables qui ont soit un type primitif, soit un type référence. Les va- riables d’un type primitif contiennent une valeur d’un type primitif du langage, tandis que les variables référence contiennent une référence (l’adresse) d’un autre objet (y compris les tableaux, qui sont des objets en Java).
-
-Si vous copiez l’état actuel d’un objet, afin d’obtenir un objet doublon, vous créerez une copie de chacune des variables. Ce faisant, la valeur de chaque variable primitive d’instance sera dupliquée (ainsi, la modification de l’une de ces valeurs dans l’une des copies ne modifiera pas la valeur de l’autre copie). Toutefois, dans le cas des variables référence, ce qui sera copié est la référence elle-même, c’est-à-dire l’adresse de l’objet vers lequel cette variable pointe. Par conséquent, les variables référence de l’objet original et de l’objet dupliqué pointeront vers la même adresse, et les variables référence feront référence aux mêmes objets. C’est ce que l’on appelle une copie de surface (shallow copy) : vous avez en effet deux objets, mais ils partagent tous les objets pointés par leurs variables référence d’instance. La figure 2 fournit un exemple : l’objet référencé par la variable b est une copie de surface de l’objet référencé par la variable a : il possède ses propres copies des variables d’instance, mais les variables référence title et time font référence aux mêmes objets.
-
-Souvent, une copie superficielle n’est pas suffisante : ce qu’il faut, c’est une copie dite profonde. Une copie profonde diffère d’une copie de surface en ce que les objets référencés par une variable référence doivent également être dupliqués de manière récursive, de telle sorte que lorsque l’objet initial est copié (en profondeur), la copie ne partage aucune référence avec l’objet initial. La figure 3 fournit un exemple : cette fois, l’objet référencé par la variable b est une copie profonde de l’objet référencé par la variable a : maintenant, les variables référence title et time référencent des objets différents. Notez que, à leur tour, les objets référencés par la variable time ont également été copiés en profondeur. L’ensemble des objets accessibles à partir de a ont été dupliqués.
-
-![Shallow Copy](shallow_copy.png)
-
-**Figure 2: A example of a shallow copy of objects.**
-
-![Deep Copy](deep_copy.png)
-
-**Figure 3: A example of a deep copy of objects.**
-
-Vous pouvez en lire plus sur la différence entre copie de surface et copie profonde sur Wikipedia :
-
-https://fr.wikipedia.org/wiki/Copie_d'un_objet
