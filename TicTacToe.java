@@ -1,3 +1,5 @@
+//import javafx.scene.control.Cell;
+
 /**
  * The class <b>TicTacToe</b> is the
  * class that implements the Tic Tac Toe Game.
@@ -9,6 +11,10 @@
  */
 public class TicTacToe
 {
+    // FINISH THE VARIABLE DECLARATION
+    private static final int DEFAULT_ROWS      = 3;
+    private static final int DEFAULT_COLUMNS   = 3;
+    private static final int DEFAULT_SIZETOWIN = 3;
     /**
      * The internal representation of the board
      * as a one dimensional array, but visualized
@@ -26,38 +32,36 @@ public class TicTacToe
      * 9  | 10  | 11 | 12
      */
     CellValue[] board;
-
     /**
      * The number of rows in your grid.
      */
-    int numRows;
-
+    int         numRows;
     /**
      * The number of columns in your grid.
      */
-    int numColumns;
-
+    int         numColumns;
     /**
      * How many rounds have the players played so far.
      */
-    int numRounds;
-
+    int         numRounds;
     /**
      * What is the current state of the game
      */
-    GameState gameState;
-
+    GameState   gameState;
     /**
      * How many cells of the same type must be
      * aligned (vertically, horizontally, or diagonally)
      * to determine a winner of the game
      */
-    int sizeToWin;
-
+    int         sizeToWin;
     /**
      * Who is the current player?
      */
-    CellValue currentPlayer;
+    CellValue   currentPlayer;
+    /**
+     * What was the last played position
+     */
+    int         lastPlayedPosition;
 
     /**
      * The default empty constructor.  The default game
@@ -65,7 +69,7 @@ public class TicTacToe
      */
     public TicTacToe()
     {
-        this(3, 3, 3);
+        this(DEFAULT_ROWS, DEFAULT_COLUMNS, DEFAULT_SIZETOWIN);
     }
 
     /**
@@ -78,19 +82,19 @@ public class TicTacToe
      */
     public TicTacToe(int aNumRows, int aNumColumns, int aSizeToWin)
     {
-        numRows    = aNumRows;
-        numColumns = aNumColumns;
-        sizeToWin  = aSizeToWin;
+        numRows            = aNumRows;
+        numColumns         = aNumColumns;
+        sizeToWin          = aSizeToWin;
+        gameState          = GameState.PLAYING;
+        currentPlayer      = CellValue.EMPTY;
+        lastPlayedPosition = 0;
 
-        board = new CellValue[numRows * numColumns];
-        for (int i = 0; i < board.length; ++i)
+        int boardSize = numRows * numColumns;
+        board = new CellValue[boardSize];
+        for (int i = 0; i < boardSize; i++)
         {
             board[i] = CellValue.EMPTY;
         }
-
-        numRounds     = 1;
-        gameState     = GameState.PLAYING;
-        currentPlayer = CellValue.EMPTY;
     }
 
     /**
@@ -103,13 +107,12 @@ public class TicTacToe
      */
     public CellValue nextPlayer()
     {
-        if (currentPlayer == CellValue.X)
+        switch (currentPlayer)
         {
-            return CellValue.O;
-        }
-        else
-        {
-            return CellValue.X;
+            case X:
+                return CellValue.O;
+            default:
+                return CellValue.X;
         }
     }
 
@@ -133,7 +136,8 @@ public class TicTacToe
      */
     public CellValue valueAt(int position)
     {
-        if (position > numRows * numColumns || position < 1)
+        int maxPosition = numRows * numColumns;
+        if (position < 1 || position > maxPosition)
         {
             return CellValue.INVALID;
         }
@@ -156,36 +160,25 @@ public class TicTacToe
      * <p>
      * If the row/column is invalid, return CellValue.INVALID.
      *
-     * @param position The position on the board to look up its current value
+     * @param row    The position on the board to look up its current value
+     * @param column The position on the board to look up its current value
      *
      * @return The CellValue at that row/column
      */
     public CellValue valueAt(int row, int column)
     {
-        if (row > numRows || row < 1 || column > numColumns || column < 1)
+        if (row < 1 || row > numRows)
+        {
+            return CellValue.INVALID;
+        }
+        else if (column < 1 || column > numColumns)
         {
             return CellValue.INVALID;
         }
         else
         {
-            return board[(row - 1) * numColumns + column - 1];
+            return valueAt((row - 1) * numColumns + column);
         }
-    }
-
-    /**
-     * Display the state of the board
-     * And ask the next player to play.
-     * Return the messages as an array of
-     * Strings so that the caller can decide
-     * how to display them (and it makes things
-     * easier to test)
-     *
-     * @return An array of messages to display.
-     */
-    public String[] show()
-    {
-        String[] ret = {toString(), nextPlayer().toString() + " to play: "};
-        return ret;
     }
 
     /**
@@ -223,40 +216,26 @@ public class TicTacToe
      */
     public String play(int position)
     {
-        StringBuilder ret = new StringBuilder();
-
-        CellValue cellValue = valueAt(position);
-
-        if (cellValue == CellValue.EMPTY)
+        CellValue playedBy = nextPlayer();
+        CellValue cell     = valueAt(position);
+        switch (cell)
         {
-            board[position - 1] = nextPlayer();
-            GameState myGameState = checkForWinner(position);
+            case EMPTY:
+                currentPlayer = playedBy;
+                lastPlayedPosition = position;
+                board[position - 1] = playedBy;
+                numRounds += 1;
 
-            if (gameState == GameState.PLAYING && myGameState != GameState.PLAYING)
-            {
-                gameState = myGameState;
-                ret.append("Result: ").append(gameState.toString());
-            }
-
-            currentPlayer = nextPlayer();
-            ++numRounds;
-        }
-        else if (cellValue == CellValue.INVALID)
-        {
-            ret.append("The value should be between 1 and ").append(numRows * numColumns);
-        }
-        else
-        {
-            ret.append("Cell " + position + " has already been played with ").append(cellValue.toString());
-        }
-
-        if (ret.toString().equals(""))
-        {
-            return null;
-        }
-        else
-        {
-            return ret.toString();
+                // Only check for a winner if we were still playing.
+                if (gameState == GameState.PLAYING)
+                {
+                    gameState = checkForWinner(position);
+                }
+                return null;
+            case INVALID:
+                return "The value should be between 1 and " + (numRows * numColumns);
+            default:
+                return "Cell " + position + " has already been played with " + cell;
         }
     }
 
@@ -275,137 +254,107 @@ public class TicTacToe
      */
     private GameState checkForWinner(int position)
     {
-        final int SEARCH_RANGE = sizeToWin - 1;
-        final int FOCUS_ROW = (position - 1) / numColumns + 1;
-        final int FOCUS_COLUMN = (position - 1) % numColumns + 1;
-
-        int countSuccessiveX = 0;
-        int countSuccessiveO = 0;
-        int maxCountSuccessiveX = 0;
-        int maxCountSuccessiveO = 0;
-        int finalMaxCountSuccessiveX = 0;
-        int finalMaxCountSuccessiveO = 0;
-
-        // Up / Down
-        for (int i = FOCUS_ROW - SEARCH_RANGE; i <= FOCUS_ROW + SEARCH_RANGE; ++i)
+        if (numRounds == numRows * numColumns)
         {
-            switch (valueAt(i, FOCUS_COLUMN))
-            {
-                case INVALID:
-                case EMPTY:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveX = 0;
-                    countSuccessiveO = 0;
-                    break;
-                case X:
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveO = 0;
-                    ++countSuccessiveX;
-                    break;
-                case O:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    countSuccessiveX = 0;
-                    ++countSuccessiveO;
-                    break;
-            }
-        }
-        finalMaxCountSuccessiveX = maxCountSuccessiveX > finalMaxCountSuccessiveX ? maxCountSuccessiveX : finalMaxCountSuccessiveX;
-        finalMaxCountSuccessiveO = maxCountSuccessiveO > finalMaxCountSuccessiveO ? maxCountSuccessiveO : finalMaxCountSuccessiveO;
-
-        // Left / Right
-        for (int i = FOCUS_COLUMN - SEARCH_RANGE; i <= FOCUS_COLUMN + SEARCH_RANGE; ++i)
-        {
-            switch (valueAt(FOCUS_ROW, i))
-            {
-                case INVALID:
-                case EMPTY:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveX = 0;
-                    countSuccessiveO = 0;
-                    break;
-                case X:
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveO = 0;
-                    ++countSuccessiveX;
-                    break;
-                case O:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    countSuccessiveX = 0;
-                    ++countSuccessiveO;
-                    break;
-            }
-        }
-        finalMaxCountSuccessiveX = maxCountSuccessiveX > finalMaxCountSuccessiveX ? maxCountSuccessiveX : finalMaxCountSuccessiveX;
-        finalMaxCountSuccessiveO = maxCountSuccessiveO > finalMaxCountSuccessiveO ? maxCountSuccessiveO : finalMaxCountSuccessiveO;
-
-        // Main Diagonal
-        for (int i = -SEARCH_RANGE; i <= SEARCH_RANGE; ++i)
-        {
-            switch (valueAt(FOCUS_ROW + i, FOCUS_COLUMN + i))
-            {
-                case INVALID:
-                case EMPTY:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveX = 0;
-                    countSuccessiveO = 0;
-                    break;
-                case X:
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveO = 0;
-                    ++countSuccessiveX;
-                    break;
-                case O:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    countSuccessiveX = 0;
-                    ++countSuccessiveO;
-                    break;
-            }
-        }
-        finalMaxCountSuccessiveX = maxCountSuccessiveX > finalMaxCountSuccessiveX ? maxCountSuccessiveX : finalMaxCountSuccessiveX;
-        finalMaxCountSuccessiveO = maxCountSuccessiveO > finalMaxCountSuccessiveO ? maxCountSuccessiveO : finalMaxCountSuccessiveO;
-
-        // Paradiagonal
-        for (int i = -SEARCH_RANGE; i <= SEARCH_RANGE; ++i)
-        {
-            switch (valueAt(FOCUS_ROW + i, FOCUS_COLUMN - i))
-            {
-                case INVALID:
-                case EMPTY:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveX = 0;
-                    countSuccessiveO = 0;
-                    break;
-                case X:
-                    maxCountSuccessiveO = countSuccessiveO > maxCountSuccessiveO ? countSuccessiveO : maxCountSuccessiveO;
-                    countSuccessiveO = 0;
-                    ++countSuccessiveX;
-                    break;
-                case O:
-                    maxCountSuccessiveX = countSuccessiveX > maxCountSuccessiveX ? countSuccessiveX : maxCountSuccessiveX;
-                    countSuccessiveX = 0;
-                    ++countSuccessiveO;
-                    break;
-            }
+            return GameState.DRAW;
         }
 
-        finalMaxCountSuccessiveX = maxCountSuccessiveX > finalMaxCountSuccessiveX ? maxCountSuccessiveX : finalMaxCountSuccessiveX;
-        finalMaxCountSuccessiveO = maxCountSuccessiveO > finalMaxCountSuccessiveO ? maxCountSuccessiveO : finalMaxCountSuccessiveO;
-
-        if (finalMaxCountSuccessiveX >= sizeToWin)
-            return GameState.XWIN;
-        else if (finalMaxCountSuccessiveO >= sizeToWin)
-            return GameState.OWIN;
-        else
+        GameState ifWon;
+        switch (currentPlayer)
         {
-            if (numRounds >= numColumns * numRows)
-                return GameState.DRAW;
+            case X:
+                ifWon = GameState.XWIN;
+                break;
+            case O:
+                ifWon = GameState.OWIN;
+                break;
+            default:
+                ifWon = GameState.PLAYING;
+        }
+
+        int currentRow    = (position - 1) / numColumns + 1;
+        int currentColumn = (position - 1) % numColumns + 1;
+
+        // Look left and right
+        if (checkSizeToWin(currentRow, currentColumn, 1, 0))
+        {
+            return ifWon;
+        }
+
+        // Look up and down
+        if (checkSizeToWin(currentRow, currentColumn, 0, 1))
+        {
+            return ifWon;
+        }
+
+        // Look diagonal down/left and diagonal up/right
+        if (checkSizeToWin(currentRow, currentColumn, -1, 1))
+        {
+            return ifWon;
+        }
+
+        // Look diagonal down/right and diagonal up/left
+        if (checkSizeToWin(currentRow, currentColumn, 1, 1))
+        {
+            return ifWon;
+        }
+
+        return GameState.PLAYING;
+    }
+
+    /**
+     * Starting from a position, look "before" and "after"
+     * to see if we have reached the size to win amount
+     * to declare a winner.
+     *
+     * @param row          The current row to check
+     * @param column       The current row to check
+     * @param rowOffset    Where should we move +1 right, -1 left and 0 for no change.
+     * @param columnOffset Where should we move +1 up, -1 down and 0 for no change.
+     *
+     * @return Boolean True if we have at least the sizeToWin of matching cells
+     */
+    private boolean checkSizeToWin(int row, int column, int rowOffset, int columnOffset)
+    {
+        int numBefore = countMatches(row, column, rowOffset, columnOffset);
+        int numAfter  = countMatches(row, column, -rowOffset, -columnOffset);
+        return (numBefore + numAfter + 1) >= sizeToWin;
+    }
+
+    /**
+     * Look around the last position played for
+     * the number of the same values
+     * To look left, the offset is -1
+     * To look right, the offset is +1
+     * To look up, the offset is - numColumns
+     * To look down, the offset is + numColumns
+     *
+     * @param row          The current row to check
+     * @param column       The current row to check
+     * @param rowOffset    Where should we move +1 right, -1 left and 0 for no change.
+     * @param columnOffset Where should we move +1 up, -1 down and 0 for no change.
+     *
+     * @return The number of similar plays based on the offset
+     */
+    private int countMatches(int row, int column, int rowOffset, int columnOffset)
+    {
+        int numFound    = 0;
+        int checkRow    = row;
+        int checkColumn = column;
+        while (true)
+        {
+            checkRow += rowOffset;
+            checkColumn += columnOffset;
+            if (valueAt(checkRow, checkColumn) == currentPlayer)
+            {
+                numFound += 1;
+            }
             else
-                return GameState.PLAYING;
+            {
+                break;
+            }
         }
+        return numFound;
     }
 
     /**
@@ -423,42 +372,161 @@ public class TicTacToe
      */
     public String toString()
     {
-        StringBuilder ret = new StringBuilder();
+        StringBuilder b               = new StringBuilder();
+        int           maxRowsIndex    = numRows - 1;
+        int           maxColumnsIndex = numColumns - 1;
 
-        for (int i = 0; i < numRows; ++i)
+        // Available in Java 11
+        String lineSeparator = "---".repeat(numColumns) + "-".repeat(numColumns - 1);
+
+        for (int i = 0; i < numRows; i++)
         {
-            for (int j = 0; j < numColumns; ++j)
+            for (int j = 0; j < this.numColumns; j++)
             {
-                CellValue cellValue = valueAt(i + 1, j + 1);
-                if (cellValue == CellValue.EMPTY || cellValue == CellValue.INVALID)
-                {
-                    ret.append("   ");
-                }
-                else
-                {
-                    ret.append(" ").append(cellValue.toString()).append(" ");
-                }
+                int index = i * numColumns + j;
 
-                if (j < numColumns - 1)
+                b.append(" ");
+                b.append(board[index]);
+                b.append(" ");
+
+                if (j < maxColumnsIndex)
                 {
-                    ret.append("|");
+                    b.append("|");
                 }
             }
-            if (i < numRows - 1)
+
+            // Line separator after each row, except the last
+            if (i < maxRowsIndex)
             {
-                ret.append("\n");
-                for (int k = 0; k < numColumns * 4 - 1; ++k)
-                {
-                    ret.append("-");
-                }
-                ret.append("\n");
+                b.append("\n");
+                b.append(lineSeparator);
+                b.append("\n");
             }
         }
-        return ret.toString();
+
+        return b.toString();
     }
 
     /**
-     * Expose all internal data for debugging purposes.
+     * An array of positions that are empty
+     * and available to be played on.
+     * <p>
+     * | X |
+     * -----------
+     * O |   |
+     * -----------
+     * |   |
+     * <p>
+     * The results are 1-based (not zero), and
+     * in the above board the empty positions are
+     * [1, 3, 5, 6, 7, 8, 9]
+     * <p>
+     * Hint: Useful for a computer to know which
+     * positions are available to choose from.
+     * Also useful for generating all game boards.
+     *
+     * @return All empty positions
+     */
+    public int[] emptyPositions()
+    {
+        int[] empties;
+        int   emptyCount = 0;
+
+        for (CellValue cellValue : board)
+        {
+            if (cellValue == CellValue.EMPTY)
+            {
+                ++emptyCount;
+            }
+        }
+
+        empties = new int[emptyCount];
+
+        for (int i = 0, j = 0; i < board.length; ++i)
+        {
+            if (board[i] == CellValue.EMPTY)
+            {
+                empties[j++] = i + 1;
+            }
+        }
+
+        return empties;
+    }
+
+    /**
+     * Create a copy of the current game with one extra move
+     * added.  The new game is a deep copy of this game
+     * and then we apply the next move.  If the move
+     * is not valid, return null;
+     *
+     * @param nextMove The desired next move (1 to numRows x numColumns)
+     *
+     * @return A new TicTacToe game
+     */
+    public TicTacToe cloneNextPlay(int nextMove)
+    {
+        if (gameState != GameState.PLAYING)
+        {
+            return null;
+        }
+
+        TicTacToe newGame = new TicTacToe(numRows, numColumns, sizeToWin);
+        newGame.gameState          = gameState;
+        newGame.numRounds          = numRounds;
+        newGame.currentPlayer      = currentPlayer;
+        newGame.lastPlayedPosition = lastPlayedPosition;
+        newGame.board              = board.clone();
+
+        if (valueAt(nextMove) == CellValue.EMPTY)
+        {
+            newGame.play(nextMove);
+        }
+        else
+        {
+            return null;
+        }
+
+        return newGame;
+    }
+
+    /**
+     * Compares this instance of the game with the
+     * instance passed as parameter. Return true
+     * if and only if the two instance represent
+     * the same state of the game including
+     * The board dimensions, number of cells to
+     * win, and the pieces on the board.
+     *
+     * @param obj An object we are comparing against
+     *
+     * @return True if they represent the same state
+     */
+    public boolean equals(Object obj)
+    {
+        if (obj instanceof TicTacToe)
+        {
+            // TODO: Conditions of being equal is still to be determined.
+            boolean isEqual = (numRows == ((TicTacToe) obj).numRows)
+                              && (numColumns == ((TicTacToe) obj).numColumns)
+                              && (sizeToWin == ((TicTacToe) obj).sizeToWin)
+                              && (board.length == ((TicTacToe) obj).board.length);
+            if (isEqual)
+            {
+                for (int i = 0; i < board.length; ++i)
+                {
+                    if (board[i] != ((TicTacToe) obj).board[i])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Expose all internal data for debugging purposes
      *
      * @return String representation of the game
      */

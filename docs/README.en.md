@@ -1,493 +1,587 @@
 <center>
   <h1>ITI 1121. Introduction to Computing II</h1>
-  <h3>Assignment 1</h3>
-  <h3>Deadline: May 21, 2020 at 11pm</h3>
+  <h3>Assignment 2</h3>
+  <h3>Deadline: Jun 11, 2020 at 11pm</h3>
 </center>
 
 ## Learning objectives
 
-* Edit, compile and run Java programs
-* Utilize arrays to store information
-* Apply basic object-oriented programming concepts
-* Understand the university policies for academic integrity
+* Using Interfaces
+* Polymorphism
+* Experiment with Deep-Copy
+* Experiment with lists and enumerations
 
 ## Introduction
 
-This year, we are going to implement the game Tic-Tac-Toe. The game itself is fairly simple and well-known game. You can brush up [your Tic-Tac-Toe skills](https://en.wikipedia.org/wiki/Tic-tac-toe).
+In this assignment, we are continuing our work on the Tic-Tac-Toe game. In the previous assignment, we came up with a basic implementation of the game, that can be played by two humans. This time, we will first create a “computer player”, which isn't very smart at all but can at least play the game according to the rules. We will thus be able to play human against computer. We will then put this aside and work on enumerating all the possible games. That enumeration will be used later when we create a computer player which can play well.
 
-Our ultimate goal is to program a machine-learning algorithm that will learn how to be a good Tic-Tac-Toe player automatically. We will base our approach on a paper published by Donald Michie in 1961 in Science Survey, titled Trial and error. That paper has been reprinted in the book On Machine Intelligence and can be found on page 11 at the following URL:
+## Human vs (Dumb) Machine
 
-* [Machine Intelligence 1986](https://www.gwern.net/docs/ai/1986-michie-onmachineintelligence.pdf)
+A very simple way to have a program play Tic-Tac-Toe is to simply have the program pick the first empty cell to play at each turn. Of course, such an implementation should be easy to beat, but at least it can be played against.
 
-For a more modern take of the same idea, you can also watch
+In order to design this solution, we want to introduce the concept of a **Player**. For now, we will have three kinds of players: the human player, and two dumb computer players. Later, we can introduce more types of players, e.g. a smart computer player, a perfect player etc. All of these are Players.
 
-* [The pile of matchboxes which can learn](https://www.youtube.com/watch?v=R9c-_neaxeU)
 
-But for this assignment, our goal is more modest: we simply want to implement a game of Tic-Tac-Toe, where players are indicating their next move from the command line. In its default conguration, it will look like this: the program rst displayed an empty grid and is prompting the rst player (X) for an input.
+![Player Interface in UML](uml_player.png)
 
-```
-$ java Main
+**Figure 1: The interface Player and the two classes implementing it.**
 
-   |   |
------------
-   |   |
------------
-   |   |
+What we gain from this **Players** abstraction is that it is possible to organize a match between two players, and have these two players play a series of games, keeping score for the match etc., without having to worry about the type of players involved. We can have human vs human, human vs dumb computer, smart vs dumb computer players, or any combination of players, this does not impact the way the game is played: we have two players, and they alternate playing a move on the game until the game is over. The requirement to be able to do this is that all **Player** implement the same method, say **play()**, which can be called when it is that player's turn to play.
 
-X to play:
-```
+We can choose who plays whom, for example a human against a computer. The player who plays first, is initially chosen randomly. In subsequent games, the players alternate as first player. As usual, the first player plays X and the second player plays O so each player will alternate between playing playing X and playing O.
 
-The first player played the cell 5. The program displays the current game, with cell number ve taken by X, and is prompting the second player (O) for an input. The game will keep going following that pattern.
+The following printout shows a typical game.
+
 
 ```
-X to play: 5
+$ java GameMain
+Player 2's turn.
+Player 1's turn.
 
-   |   |
+ X |   |
 -----------
-   | X |
+   |   |
 -----------
    |   |
 
 O to play:
 ```
 
-The user types "2" in the terminal.
+Here, player 2 (the computer) was selected to start for the first game.
+
+As can be seen, the computer player doesn't print out anything when it plays, it just makes its move silently. Then, it is player 1's turn (human). Following what we did in assignment 1, the HumanPlayer object first prints the game (here, we can see that the computer played cell 1, the first that was available) and then prompts the actual human (us, the user) for a move. Below, we see that the human has selected cell 2. The computer will then play (silently) and the human will be prompt again. It continues until the game finishes:
 
 ```
 O to play: 2
+Player 2's turn.
+Player 1's turn.
 
-   | O |
------------
-   | X |
+ X | O | X
 -----------
    |   |
-
-X to play:
-```
-
-The user types "1" in the terminal.
-
-```
-X to play: 1
-
- X | O |
------------
-   | X |
 -----------
    |   |
 
 O to play:
 ```
 
-The user types "9" in the terminal.
+And then.
+
+```
+O to play: 6
+Player 2's turn.
+Player 1's turn.
+
+ X | O | X
+-----------
+ X |   | O
+-----------
+   |   |
+
+O to play:
+```
+
+And then.
+
+```
+O to play: 7
+Player 2's turn.
+Player 1's turn.
+
+ X | O | X
+-----------
+ X | X | O
+-----------
+ O |   |
+
+O to play:
+```
+
+And then
 
 ```
 O to play: 9
- X | O |
------------
-   | X |
------------
-   |   | O
+Player 2's turn.
+Game over
 
-X to play:
-```
-
-The user types "4" in the terminal.
-
-```
-X to play: 4
-
- X | O |
------------
- X | X |
------------
-   |   | O
-
-O to play:
-```
-
-The user types "6" in the terminal.
-
-```
-O to play: 6
-
- X | O |
+ X | O | X
 -----------
  X | X | O
 -----------
-   |   | O
+ O | X | O
 
-X to play:
+Result: DRAW
+Play again (y)?:
 ```
 
-The user types "7" in the terminal.
+This game finishes with a DRAW. The sentence "Game over" is printed after the last move (made by the computer in this case), then the final board is printed, and the outcome of the game ("Result: DRAW").
+
+The user is then asked if they want to play again.
+
+Here, we want to play another game. This time, the human will make the first move. Below, you can see the entire game, which is a human win. Then a third game is played, also a human win, and we stop playing after this.
 
 ```
-X to play: 7
+Play again (y)?: y
+Player 1's turn.
+
+   |   |
+-----------
+   |   |
+-----------
+   |   |
+
+X to play: 1
+
+Player 2's turn.
+Player 1's turn.
 
  X | O |
 -----------
+   |   |
+-----------
+   |   |
+
+X to play: 4
+
+Player 2's turn.
+Player 1's turn.
+
+ X | O | O
+-----------
+ X |   |
+-----------
+   |   |
+
+X to play: 7
+Game over
+
+ X | O | O
+-----------
+ X |   |
+-----------
+ X |   |
+
+Result: XWIN
+Play again (y)?: y
+
+Player 2's turn.
+Player 1's turn.
+
+ X |   |
+-----------
+   |   |
+-----------
+   |   |
+
+O to play: 3
+
+Player 2's turn.
+Player 1's turn.
+
+ X | X | O
+-----------
+   |   |
+-----------
+   |   |
+
+O to play: 6
+
+Player 2's turn.
+Player 1's turn.
+
  X | X | O
 -----------
  X |   | O
-
-Result: XWIN
-```
-
-As can be seen, at each turn the program prints out the current state of the game and then queries the next user (X or O) to provide its next move. We simply assume that the cells are numbered line by line, from top left to bottom right, as follows:
-
-```
- 1 | 2 | 3
 -----------
- 4 | 5 | 6
+   |   |
+
+O to play: 9
+Game over
+
+ X | X | O
 -----------
- 7 | 8 | 9
+ X |   | O
+-----------
+   |   | O
+
+Result: OWIN
+Play again (y)?: n
 ```
 
-So in the game above, the first player’s (playing with X) initial move is to select the cell 5, which is in the middle of the game. The second player’s (playing with O) initial move is to select the cell 2, which is in the middle of the first line (and a fatal mistake). After a few more moves, the first player wins.
+We are now ready to program our solution. We will reuse the implementation of the class TicTacToe from assignment 1 with a few small tweaks.
 
-Our own implementation will be a little bit more general than the usual 3x3 grid game. By default (as shown above), our game will be indeed played on a 3x3 grid, trying to align 3 similar cells horizontally, vertically or diagonally. But our more general implementation will accept 3 parameters n, m and k to play a game on an nxm grid trying to align k similar cells horizontally, vertically or diagonally. Here is an example of a game on a 3x4 grid, trying to align 3 similar cells.
+
+### Player
+
+_Player_ is an interface. It defines only one method, the method play. Play is returns a boolean (did the player succeed in playing) and has one input parameter, a reference to a TicTacToe game.
+
+### HumanPlayer
+
+_HumanPlayer_ is a class which implements the interface Player. In its implementation of the method play, it first checks that the game is indeed playable (and returns false if it isn't), and then prompts the user for a valid input (similar to that from Assignment 1). Once an input has been provided, it plays in on the board and returns true.
+
+### ComputerInOrderPlayer
+
+_ComputerInOrderPlayer_ is a class which also implements the interface _Player_. In its implementation of the method play, it first checks that the game is playable (and returns false if it isn't), and then chooses the first available cell.
+
+## ComputerRandomPlayer
+
+Let us make a slightly smarter, but still dumb computer player.
+
+_ComputerRandomPlayer_ is a class which also implements the interface _Player_. In its implementation of the method play, it first checks that the game is indeed playable (and returns false if it isn't), and then chooses randomly the next move and plays it on the game and returns. All the possible next moves have an equal chance of being played.
+
+### GameMain
+
+This class implements playing the game. You are provided with the initial part, but you will need to complete it. The entire game is played in the main method. A local variable **players**, a reference to an array of two players, is used to store the human and the computer player. You **must** use that array to store your **Player** references.
+
+You need to finish the implementation of the main to obtain the specified behaviour. You need to ensure that the first player is initially chosen randomly, and that the first move alternate between both players in subsequent games.
+
+Below is another sample run, this time on a 4x4 grid with a win length of 2. The human players makes a series of input mistakes along the way.
+
+We have two additional arguments than we had from Assignment #1,  "player1" and "player2" which can be one of
+
+* "h" for the human player
+* "ic" for the in order computer player
+* "rc" for the random computer player
 
 ```
-$ java Main 3 4 3
-```
+$ java GameMain h ic 4 4 2
+Player 1's turn.
 
-```
    |   |   |
 ---------------
    |   |   |
 ---------------
    |   |   |
+---------------
+   |   |   |
 
-X to play:
-```
-
-```
 X to play: 2
+Player 2's turn.
+Player 1's turn.
 
-   | X |   |
+ O | X |   |
 ---------------
    |   |   |
 ---------------
    |   |   |
-
-O to play:
-```
-
-```
-O to play: 6
-
-   | X |   |
----------------
-   | O |   |
 ---------------
    |   |   |
 
-X to play:
-```
+X to play: 99
+The value should be between 1 and 16
 
-```
-X to play: 7
-
-   | X |   |
----------------
-   | O | X |
----------------
-   |   |   |
-
-O to play:
-```
-
-```
-O to play: 4
-
-   | X |   | O
----------------
-   | O | X |
----------------
-   |   |   |
-
-X to play:
-```
-
-```
-X to play: 12
-
-   | X |   | O
----------------
-   | O | X |
----------------
-   |   |   | X
-
-Result: XWIN
-```
-
-## Enum
-
-In this application, we have a need to record the “state” of a game: it could be still in play, or one or the other of the players have won, or it could be a draw. Similarly, we need to record the state of a cell on the board: a cell can be empty, or it can contain a X or a O.
-
-There are several ways to achieve this, but in this assignment we are going to use Java’s Enum type.
-
-Some programmers use values of type int to represent symbolic constants in their programs. For example, to represent the day of the week or the month of the year.
-
-```java
-public class E1 {
-
-  public static final int MONDAY = 1;
-  public static final int TUESDAY = 2;
-  public static final int SUNDAY = 7;
-
-  public static final int JANUARY = 1;
-  public static final int FEBRUARY = 2;
-  public static final int DECEMBER = 12;
-
-  public static void main(String[] args) {
-    int day = SUNDAY;
-
-    switch (day) {
-      case MONDAY:
-        System.out.println("sleep");
-        break;
-
-      case SUNDAY:
-        System.out.println("midterm test");
-        break;
-
-      default:
-        System.out.println("study");
-    }
-  }
-}
-```
-
-Using constants, such as MONDAY and JANUARY, improves the readability of the source code. Compare “if (day == MONDAY) { ...}” to “if (day == 1) { ...}”. It is one step in the right direction.
-
-However, since all the constants are integer values, there are several kinds of errors that the compiler cannot detect. For example, if the programmer uses the same number for two constants, the compiler would not be able to help, 7 is valid value for both SATURDAY and SUNDAY:
-
-```java
-public static final int SATURDAY = 7;
-public static final int SUNDAY = 7;
-```
-
-But also, assigning a value representing a month to variable representing a day of the week would not be detected by the compiler, both are of type int:
-
-```java
-int day = JANUARY;
-```
-
-Enumerated types have the same benefits as the symbolic constants above, making the code more readable, but in a typesafe way.
-
-```java
-public class E2 {
-  public enum Day {
-    MONDAY, TUESDAY, SUNDAY
-  }
-
-  public enum Month {
-    JANUARY, FEBRUARY, DECEMBER
-  }
-
-  public static void main(String[] args) {
-
-    Day day = Day.MONDAY;
-
-    switch (day) {
-      case MONDAY:
-        System.out.println("sleep");
-        break;
-
-      case SUNDAY:
-        System.out.println("midterm test");
-        break;
-
-      default:
-        System.out.println("study");
-    }
-  }
-}
-```
-
-In the above program, each constant has a unique value. Furthermore, the statement below produces a compile time error, as it should:
-
-```java
-Day day = Month.JANUARY;
-```
-
-```bash
-Enum.java:36: incompatible types
-found : E2.Month
-required: E2.Day
-      Day day = Month.JANUARY;
-                     ^
-1 error
-```
-
-• https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html.
-
-## Our Implementation
-
-We are now ready to program our solution. We will only need four classes for this. For the assignment, you need to follow the patterns that we provide. You cannot change any of the signatures of the methods (that is you cannot modify the methods at all). You cannot add new public methods or variables. You can, however, add new private methods to improve the readability or the organization of your code.
-
-
-### GameState
-
-GameState is an enum type which is used to capture the current state of the game. It has four possible values:
-
-* PLAYING: this game is ongoing,
-* DRAW: this game is a draw,
-* XWIN: this game as been won by the first player,
-* OWIN: this game as been won by the second player.
-
-### CellValue
-
-CellValue is an enum type which is used to capture the state of a cell. It has four possible values:
-
-* INVALID: the cell is not valid,
-* EMPTY: the cell is empty,
-* X: there is a X in the cell,
-* O: there is an O in the cell.
-
-Hint: It's possible to change the `toString()` of an enum.
-
-Par exemple,
-
-```java
-public enum DayOfWeek {
-  INVALID("?"),
-  WEEKDAY("Mon-Fri"),
-  WEEKEND("Sat/Sun");
-
-  private String display;
-
-  private DayOfWeek(String aDisplay) {
-    display = aDisplay;
-  }
-
-  @Override
-  public String toString() {
-    return display;
-  }
-}
-```
-
-### TicTacToe
-
-Instances of the class TicTacToe represent a game being played. Each object stores the actual board, which is saved in a single dimension array. There is an instance method that can be used to play the next move. The object figures out the player’s turn, so that information is not specified: we simply specify the index to play and the object knows to play either a X or a O. The object also tracks the state of the game automatically.
-
-The specification for our class TicTacToe is given in our zip file. You need to fill out all the missing parts, reading carefully all the comments before doing so. You cannot modify the methods or the variables that are provided. You can, however, add new private methods as required.
-
-La spécification de notre classe TicTacToe est donnée dans notre fichier zip. Vous devez remplir toutes les parties manquantes, en lisant attentivement tous les commentaires avant de le faire. Vous ne pouvez pas modifier les méthodes ou les variables qui sont fournies. Vous pouvez, cependant, ajouter de nouvelles méthodes de visibilité private si nécessaire.
-
-The template that you are working with contains the following:
-
-* An instance variable which is a reference to an array of CellValue to record the state of the board.
-* Some instance variables to record the game’s number of columns and lines, the number of cells to align, the number of turns played (“level”) and current state.
-* Two constructors: the default one creates the usual game (the 3x3 grid, with a winner if 3 similar cells are aligned), a second one is used to specify the number of rows, the number of columns and the number of cells to align. As usual, all instance variables must be initialized when building the object.
-* A method for querying the object on the next player (that is, is it X's or O's turn to play?).
-* A `show()` method to show the public state of the game.
-* A `play(int position)` method for playing at a particular place in the game. This updates the game state and the grid.
-* We also have some auxiliary method,
-   * `checkForWinner(int position)`, which is used to calculate the state of the game after a particular move is made in the play method.
-   * `valueOf(...)` (two methods) to show the value of a cell in the grid.
-* There is a method `toString()`, which returns a string representation of the current state of the board.
-* We don't use access methods ("getters"), but there is a `toDebug ()` to show the state of your games.
-
-The specific behavior is described in the test automate in junit.zip
-
-An example of a character string returned by `toString()` would be, when printed:
-
-```
-   | X |   | O
----------------
-   | O | X |
----------------
-   |   |   | X
-```
-
-There are a few situations that need our attention. For example, the index selected by the player may be invalid
-or illegal. We do not have a very good way to handle these situations yet, so for the time being we will simply write
-an error message. The subsequent behaviour of the method is unspecified, so simply implement something that seems to make sense <sup>1</sup>. One other situation would be that players continue the game after one of them wins. For testing purpose, we actually want that to be possible, however, then game state should reflect the first winner of the game. So if the players keep going after a win, a message is printed out but the game continues as long as the moves are legal. The “first” winner remains.
-
-<sup>1</sup>The reason we are not specifying any behaviour here is because once we will have the tools required to deal with these exceptional situations, we will see that we actually will not have to come up with an alternative behaviour at all.
-
-Note that the method toString() returns a reference to a String, it is not actually printing anything. So that one String instance, when printed, should produce the expected output (in other words, that one string instance, when printed, will span several lines).
-
-If the cell provided by the player is invalid or illegal, and a message is displayed to the user, who is asked to play again. Here are a couple of examples of this situation:
-
-```
-$ java Main
-
-   |   |
------------
-   |   |
------------
-   |   |
-
-X to play:
-```
-
-```
 X to play: 2
-
-   | X |
------------
-   |   |
------------
-   |   |
-
-0 to play:
-```
-
-```
-0 to play: 10
-The value should be between 1 and 9
-
-   | X |
------------
-   |   |
------------
-   |   |
-
-0 to play:
-```
-
-```
-0 to play: 2
 Cell 2 has already been played with X
 
+X to play: 6
+Game over
+
+ O | X |   |
+---------------
+   | X |   |
+---------------
+   |   |   |
+---------------
+   |   |   |
+
+Result: XWIN
+Play again (Y)?:n
+```
+
+
+## TicTacToe Enumerations
+
+We are now looking at something else: game enumerations. We would like to generate all the possible games for a given size of grid and win size.
+
+For example, if we take the default, 3x3 grid, there is 1 grid at level 0, namely:
+
+```
+   |   |
+-----------
+   |   |
+-----------
+   |   |
+```
+
+At level 1, there are 9 grids, namely:
+
+```
+ X |   |
+-----------
+   |   |
+-----------
+   |   |
+```
+
+```
    | X |
 -----------
    |   |
 -----------
    |   |
-
-0 to play:
 ```
 
 ```
-0 to play: 3
-
-   | X | O
+   |   | X
 -----------
    |   |
 -----------
    |   |
-
-X to play:
 ```
 
-Note that you can assume that the players are only providing integer values as inputs. You do not have to handle the case of other input types such as a character.
+```
+   |   |
+-----------
+ X |   |
+-----------
+   |   |
+```
 
-### Main
+```
+   |   |
+-----------
+   | X |
+-----------
+   |   |
+```
 
-This class implements the game. You are provided with an implementation, which creates the instance of the TicTacToe class according to the parameters submitted by the user. It's all about looping through each stage of the game until the game is over. At each step, it displays the current game and asks the next player, X or a O, to play a cell.
+```
+   |   |
+-----------
+   |   | X
+-----------
+   |   |
+```
 
+```
+   |   |
+-----------
+   |   |
+-----------
+ X |   |
+```
+
+```
+   |   |
+-----------
+   |   |
+-----------
+   | X |
+```
+
+```
+   |   |
+-----------
+   |   |
+-----------
+   |   | X
+```
+
+There are then 72 grids at level 2, too many to print here. In Appendix A, we provide the complete list of games for a 2x2 grid, with a win size of 2. Note that no game of level 4 appears on that list: it is simply impossible to reach level 3 and not win on a 2x2 grid with a win size of 2. In our enumeration, we do not list the same game twice, and we do not continue after a game has been won.
+
+### Our Implementation
+
+For this implementation, we are going to add a couple of new methods to our class **TicTacToe** and we will create a new class, **TicTacToeEnumerations**, to generate our games. We will store our games in a list of lists. We will have our own implementation of the abstract data type List very soon, but we do not have it yet. Therefore, exceptionally for ITI1X21, we are going to use a ready-to-use solution. In this case, we will use java.util.LinkedList. The documentation is available at https://docs.oracle.com/javase/9/docs/api/java/util/LinkedList.html.
+
+The goal is to create a list of lists: each list will have all the different games for a given level. Consider again the default, 3x3 grid. Our list will have 10 elements.
+
+* The first element is the list of 3x3 grid at level 0. There is 1 such grid, so this list has 1 element.
+* The second element is the list of 3x3 grid at level 1. There are 9 such grids, so this list has 9 elements.
+* The third element is the list of 3x3 grid at level 2. There are 72 such grids, so this list has 72 elements.
+* The fourth element is the list of 3x3 grid at level 3. There are 252 such grids, so this list has 252 elements.
+* The fifth element is the list of 3x3 grid at level 4. There are 756 such grids, so this list has 756 elements.
+
+...
+
+* The ninth element is the list of 3x3 grid at level 8. There are 390 such grids, so this list has 390 elements.
+* The tenth element is the list of 3x3 grid at level 9. There are 78 such grids, so this list has 78 elements.
+
+The class **EnumerationsMain.java** is provided to you. Here are a few typical runs:
+
+```
+$ java EnumerationsMain
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 9 element(s) (9 still playing)
+======= level 2 =======: 72 element(s) (72 still playing)
+======= level 3 =======: 252 element(s) (252 still playing)
+======= level 4 =======: 756 element(s) (756 still playing)
+======= level 5 =======: 1260 element(s) (1140 still playing)
+======= level 6 =======: 1520 element(s) (1372 still playing)
+======= level 7 =======: 1140 element(s) (696 still playing)
+======= level 8 =======: 390 element(s) (222 still playing)
+======= level 9 =======: 78 element(s) (0 still playing)
+that's 5478 games
+564 won by X
+316 won by O
+78 draw
+```
+
+We can specify the grid size and the number of in a row to win
+
+```
+$ java EnumerationsMain 3 3 2
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 9 element(s) (9 still playing)
+======= level 2 =======: 72 element(s) (72 still playing)
+======= level 3 =======: 252 element(s) (112 still playing)
+======= level 4 =======: 336 element(s) (136 still playing)
+======= level 5 =======: 436 element(s) (40 still playing)
+======= level 6 =======: 116 element(s) (4 still playing)
+======= level 7 =======: 12 element(s) (0 still playing)
+that's 1234 games
+548 won by X
+312 won by O
+0 draw
+```
+
+Here is a small 2x2 grid.
+
+```
+$ java EnumerationsMain 2 2 2
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 4 element(s) (4 still playing)
+======= level 2 =======: 12 element(s) (12 still playing)
+======= level 3 =======: 12 element(s) (0 still playing)
+that's 29 games
+12 won by X
+0 won by O
+0 draw
+```
+
+Here is an _impossible to win_ 2x2 grid.
+
+```
+$ java EnumerationsMain 2 2 3
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 4 element(s) (4 still playing)
+======= level 2 =======: 12 element(s) (12 still playing)
+======= level 3 =======: 12 element(s) (12 still playing)
+======= level 4 =======: 6 element(s) (0 still playing)
+that's 35 games
+0 won by X
+0 won by O
+6 draw
+```
+
+Here is a larger 5x2 board.
+
+```
+$ java EnumerationsMain 5 2 3
+======= level 0 =======: 1 element(s) (1 still playing)
+======= level 1 =======: 10 element(s) (10 still playing)
+======= level 2 =======: 90 element(s) (90 still playing)
+======= level 3 =======: 360 element(s) (360 still playing)
+======= level 4 =======: 1260 element(s) (1260 still playing)
+======= level 5 =======: 2520 element(s) (2394 still playing)
+======= level 6 =======: 3990 element(s) (3798 still playing)
+======= level 7 =======: 3990 element(s) (3290 still playing)
+======= level 8 =======: 2580 element(s) (2162 still playing)
+======= level 9 =======: 1032 element(s) (646 still playing)
+======= level 10 =======: 150 element(s) (0 still playing)
+that's 15983 games
+1212 won by X
+610 won by O
+150 draw
+```
+
+### TicTacToe Changes
+
+We need to add three new public methods to the class TicTacToe:
+
+#### cloneNextPlay
+
+```java
+public TicTacToe cloneNextPlay(int nextMove)
+```
+
+The `cloneNextPlay` is used to create a new instance of the class `TicTacToe`, based on the current instance (aka `this`). The new instance will copy (also known as clone) the current state of the game, and will then apply the `nextMove`. For example, imagine the following game:
+
+```
+ O |   | X
+-----------
+ X |   |
+-----------
+   |   |
+```
+
+A call to
+
+```java
+game.cloneNextPlay(7);
+```
+
+Returns a new game as follows:
+
+```
+ O |   | X
+-----------
+ X |   |
+-----------
+ O |   |
+```
+
+One important consideration in implementing this method is that the underlying game should not be modified by the call. Have a look at Appendix B to better understand what is required to achieve this.
+
+
+#### equals
+
+```java
+public boolean equals(Object obj)
+```
+
+The `equals` compares the current game with the game referenced by other object. This method returns true if and only if both games are considered the same: they have the same characteristics, and their board is in the same state.
+
+#### emptyPositions
+
+The `emptyPositions` returns an array of positions that are empty and available to be played on. The results are 1-based (not zero).
+
+For example, imagine the following game:
+
+```
+ O |   | X
+-----------
+ X |   |
+-----------
+   |   |
+```
+
+A call to
+
+```java
+game.emptyPositions();
+```
+
+Returns
+
+```java
+[2, 5, 6, 7, 8, 9]
+```
+
+### TicTacToeEnumerations
+
+This new class computes has a constructor the same as `TicTacToe`
+
+```java
+public TicTacToeEnumerations(int aNumRows, int aNumColumns, int aSizeToWin)
+```
+
+And then implement the method `generateAllGames` to generate the list of lists of games.
+
+```java
+public LinkedList<LinkedList<TicTacToe>> generateAllGames()
+```
+
+This method returns the (Linked) list of (Linked) lists of TicTacToe references that we are looking for, for the games on a grid `numRows` x `numColumns` with a particular `sizeToWin`. As explained, each of the (secondary) lists contains the lists of references to the game of the same level. There are three important factors to take into account when building the list:
+
+* We only build games up to their winning point (or until they reach a draw). We never extend a game that is already won.
+* We do not duplicate games. There are several ways to reach the same state, so make sure that the same game is not listed several times.
+* We do not include empty lists. As can be seen in A, we stop our enumeration once all the games are finished. In the 2x2 case with a win size of 2, since all the games are finished after 3 moves, the list of lists has only 4 elements: games after 0 move, games after 1 move, games after 2 moves and games after 3 moves.
 
 ## JUnit
 
-We provide a set of JUnit tests for the TicTacToe class. These tests should help ensure that your implementation is correct. They can also help clarify the expected behavior of this class.
+We provide a set of JUnit tests. These tests should help ensure that your implementation is correct. They can also help clarify the expected behavior of this class.
 
-Please read the [junit instructions](JUNIT.md) for help with running the tests.
+Please read the [junit instructions](JUNIT.en.md) for help with running the tests.
 
 
 ## Submission
@@ -498,10 +592,20 @@ Submission errors will affect your grades.
 Submit the following files.
 
 * STUDENT.md
-* Main.java
-* CellValue.java
-* GameState.java
+* ComputerInOrderPlayer.java
+* ComputerRandomPlayer.java
+* GameMain.java
+* HumanPlayer.java
 * TicTacToe.java
+* TicTacToeEnumerations.java
+
+Submit the following files, but they should not be changed.
+
+* CellValue.java
+* EnumerationsMain.java
+* GameState.java
+* Player.java
+* Utils.java
 
 This assignment can be done in groups of 2 +/- 1 person.  Ensure that `STUDENT.md` includes the names of all participants; only submit 1 solution per group.
 
@@ -520,3 +624,155 @@ Cases of plagiarism will be dealt with according to the university regulations. 
 4. I did not collaborate with any other person, with the exception of my partner in the case of team work.
 
 * If you did collaborate with others or obtained source code from the Web, then please list the names of your collaborators or the source of the information, as well as the nature of the collaboration. Put this information in the submitted README.txt file. Marks will be deducted proportional to the level of help provided (from 0 to 100%).
+
+## Appendix A: Enumerating all games of a 2x2 grid
+
+```
+======= level 0 =======: 1 element(s)
+   |
+-------
+   |
+```
+
+```
+======= level 1 =======: 4 element(s)
+ X |
+-------
+   |
+
+   | X
+-------
+   |
+
+   |
+-------
+ X |
+
+   |
+-------
+   | X
+```
+
+```
+======= level 2 =======: 12 element(s)
+
+ X | O
+-------
+   |
+
+ X |
+-------
+ O |
+
+ X |
+-------
+   | O
+
+ O | X
+-------
+   |
+
+   | X
+-------
+ O |
+
+   | X
+-------
+   | O
+
+ O |
+-------
+ X |
+
+   | O
+-------
+ X |
+
+   |
+-------
+ X | O
+
+ O |
+-------
+   | X
+
+   | O
+-------
+   | X
+
+   |
+-------
+ O | X
+```
+
+```
+======= level 3 =======: 12 element(s)
+
+ X | O
+-------
+ X |
+
+ X | O
+-------
+   | X
+
+ X | X
+-------
+ O |
+
+ X |
+-------
+ O | X
+
+ X | X
+-------
+   | O
+
+ X |
+-------
+ X | O
+
+ O | X
+-------
+ X |
+
+ O | X
+-------
+   | X
+
+   | X
+-------
+ O | X
+
+   | X
+-------
+ X | O
+
+ O |
+-------
+ X | X
+
+   | O
+-------
+ X | X
+```
+
+## Appendix B: Shallow copy versus Deep copy
+
+As you know, objects have variables which are either a primitive type, or a reference type. Primitive variables hold a value from one of the language primitive type, while reference variables hold a reference (the address) of another object (including arrays, which are objects in Java).
+
+If you are copying the current state of an object, in order to obtain a duplicate object, you will create a copy of each of the variables. By doing so, the value of each instance primitive variable will be duplicated (thus, modifying one of these values in one of the copy will not modify the value on the other copy). However, with reference variables, what will be copied is the actual reference, the address of the object that this variable is pointing at. Consequently, the reference variables in both the original object and the duplicated object will point at the same address, and the reference variables will refer to the same objects. This is known as a shallow copy: you indeed have two objects, but they share all the objects pointed at by their instance reference variables. The Figure B provides an example: the object referenced by variable b is a shallow copy of the object referenced by variable a: it has its own copies of the instances variables, but the references variables title and time are referencing the same objects.
+
+Often, a shallow copy is not adequate: what is required is a so-called deep copy. A deep copy differs from a shallow copy in that objects referenced by reference variable must also be recursively duplicated, in such a way that when the initial object is (deep) copied, the copy does not share any reference with the initial object. The Figure B provides an example: this time, the object referenced by variable b is a deep copy of the object referenced by variable a: now, the references variables title and time are referencing different objects. Note that, in turn, the objects referenced by the variable time have also been deep-copied. The entire set of objects reachable from a have been duplicated.
+
+![Shallow Copy](shallow_copy.png)
+
+**Figure 2: A example of a shallow copy of objects.**
+
+![Deep Copy](deep_copy.png)
+
+**Figure 3: A example of a deep copy of objects.**
+
+You can read more about shallow versus deep copy on Wikipedia:
+
+https://en.wikipedia.org/wiki/Object_copying

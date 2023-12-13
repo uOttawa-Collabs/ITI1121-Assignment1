@@ -10,5 +10,21 @@
 
 public enum CellValue
 {
-    INVALID, EMPTY, X, O;
+    INVALID("?"),
+    EMPTY(" "),
+    X("X"),
+    O("O");
+
+    private final String display;
+
+    CellValue(String aDisplay)
+    {
+        display = aDisplay;
+    }
+
+    @Override
+    public String toString()
+    {
+        return display;
+    }
 }
